@@ -1,12 +1,8 @@
 
-Welcome to the JDK!
-===================
+This is a repository for collaboratively exploring Java startup time optimization ideas. 
+The intent is to contribute the resulting work into OpenJDK projects by their original 
+authors. Alternatively, the work may be moved into a new Eclipse Adoptium project.
 
-For information about building the JDK, including how to retrieve all
-of the source code, please see either of these files:
-
-  * doc/building.html   (html version)
-  * doc/building.md     (markdown version)
-
-See http://openjdk.java.net/ for more information about the OpenJDK
-Community and the JDK.
+Areas of common interest include (but not limited to):
+ * General class pre-initialization
+ * Static analyzer for identifying unsafe pre-initialization
