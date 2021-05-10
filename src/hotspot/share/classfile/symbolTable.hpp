@@ -42,6 +42,7 @@
 class BoolObjectClosure;
 class outputStream;
 class SerializeClosure;
+class CompactSymbolTableWriter;
 
 // TempNewSymbol acts as a handle class in a handle/body idiom and is
 // responsible for proper resource management of the body (which is a Symbol*).
@@ -96,8 +97,6 @@ class TempNewSymbol : public StackObj {
   operator Symbol*()                             { return _temp; }
 };
 
-template <class T, class N> class CompactHashtable;
-
 class SymbolTable : public RehashableHashtable<Symbol*, mtSymbol> {
   friend class VMStructs;
   friend class ClassFileParser;
@@ -113,9 +112,6 @@ private:
   // For statistics
   static int _symbols_removed;
   static int _symbols_counted;
-
-  // shared symbol table.
-  static CompactHashtable<Symbol*, char> _shared_table;
 
   Symbol* allocate_symbol(const u1* name, int len, bool c_heap, TRAPS); // Assumes no characters larger than 0x7F
 
@@ -256,10 +252,9 @@ public:
   static void read(const char* filename, TRAPS);
 
   // Sharing
+  static void copy_shared_symbol_table(CompactSymbolTableWriter* ch_table);
   static void write_to_archive();
   static void serialize(SerializeClosure* soc);
-  static u4 encode_shared(Symbol* sym);
-  static Symbol* decode_shared(u4 offset);
 
   // Rehash the symbol table if it gets out of balance
   static void rehash_table();
