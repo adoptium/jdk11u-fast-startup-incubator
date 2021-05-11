@@ -339,12 +339,6 @@ void MetaspaceShared::post_initialize(TRAPS) {
       ClassLoaderExt::init_app_module_paths_start_index(header->_app_module_paths_start_index);
     }
   }
-
-  if (DumpSharedSpaces) {
-    if (SharedArchiveConfigFile) {
-      read_extra_data(SharedArchiveConfigFile, THREAD);
-    }
-  }
 }
 
 void MetaspaceShared::read_extra_data(const char* filename, TRAPS) {
@@ -1701,6 +1695,12 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     tty->print_cr("Loading classes to share: done.");
 
     log_info(cds)("Shared spaces: preloaded %d classes", class_count);
+
+    if (SharedArchiveConfigFile) {
+      tty->print_cr("Reading extra data from %s ...", SharedArchiveConfigFile);
+      read_extra_data(SharedArchiveConfigFile, THREAD);
+    }
+    tty->print_cr("Reading extra data: done.");
 
     // Rewrite and link classes
     tty->print_cr("Rewriting and linking classes ...");
