@@ -134,6 +134,9 @@ extern Mutex*   ThreadIdTableCreate_lock;        // Used by ThreadIdTable to laz
 extern Monitor* RedefineClasses_lock;            // locks classes from parallel redefinition
 extern Mutex*   ThreadHeapSampler_lock;          // protects the static data for initialization.
 
+#if INCLUDE_CDS && INCLUDE_JVMTI
+extern Mutex*   CDSClassFileStream_lock;         // FileMapInfo::open_stream_for_jvmti
+#endif
 #if INCLUDE_JFR
 extern Mutex*   JfrStacktrace_lock;              // used to guard access to the JFR stacktrace table
 extern Monitor* JfrMsg_lock;                     // protects JFR messaging
