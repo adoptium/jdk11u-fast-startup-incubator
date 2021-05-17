@@ -166,6 +166,7 @@ typedef Hashtable<Symbol*, mtSymbol>          SymbolHashtable;
 typedef HashtableEntry<Symbol*, mtClass>      SymbolHashtableEntry;
 typedef Hashtable<InstanceKlass*, mtClass>       KlassHashtable;
 typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
+typedef CompactHashtable<Symbol*, char>       SymbolCompactHashTable;
 typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
 
 typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
@@ -471,7 +472,18 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   /***************/                                                                                                                  \
                                                                                                                                      \
      static_field(SymbolTable,                 _the_table,                                    SymbolTable*)                          \
+     static_field(SymbolTable,                 _shared_table,                                 SymbolCompactHashTable)                \
      static_field(RehashableSymbolHashtable,   _seed,                                         juint)                                 \
+                                                                                                                                     \
+  /********************/                                                                                                             \
+  /* CompactHashTable */                                                                                                             \
+  /********************/                                                                                                             \
+                                                                                                                                     \
+  nonstatic_field(SymbolCompactHashTable,      _base_address,                                 address)                               \
+  nonstatic_field(SymbolCompactHashTable,      _entry_count,                                  u4)                                    \
+  nonstatic_field(SymbolCompactHashTable,      _bucket_count,                                 u4)                                    \
+  nonstatic_field(SymbolCompactHashTable,      _buckets,                                      u4*)                                   \
+  nonstatic_field(SymbolCompactHashTable,      _entries,                                      u4*)                                   \
                                                                                                                                      \
   /********************/                                                                                                             \
   /* SystemDictionary */                                                                                                             \
@@ -1362,6 +1374,8 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_toplevel_type(GrowableArray<int>)                               \
   declare_toplevel_type(Arena)                                            \
     declare_type(ResourceArea, Arena)                                     \
+                                                                          \
+  declare_toplevel_type(SymbolCompactHashTable)                           \
                                                                           \
   /***********************************************************/           \
   /* Thread hierarchy (needed for run-time type information) */           \

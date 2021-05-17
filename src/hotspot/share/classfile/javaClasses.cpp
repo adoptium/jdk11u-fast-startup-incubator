@@ -261,7 +261,7 @@ Handle java_lang_String::basic_create(int length, bool is_latin1, TRAPS) {
   return h_obj;
 }
 
-Handle java_lang_String::create_from_unicode(const jchar* unicode, int length, TRAPS) {
+Handle java_lang_String::create_from_unicode(jchar* unicode, int length, TRAPS) {
   bool is_latin1 = CompactStrings && UNICODE::is_latin1(unicode, length);
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   typeArrayOop buffer = value(h_obj());
@@ -291,7 +291,7 @@ Handle java_lang_String::create_from_unicode(const jchar* unicode, int length, T
   return h_obj;
 }
 
-oop java_lang_String::create_oop_from_unicode(const jchar* unicode, int length, TRAPS) {
+oop java_lang_String::create_oop_from_unicode(jchar* unicode, int length, TRAPS) {
   Handle h_obj = create_from_unicode(unicode, length, CHECK_0);
   return h_obj();
 }
@@ -663,7 +663,7 @@ char* java_lang_String::as_utf8_string(oop java_string, int start, int len, char
   }
 }
 
-bool java_lang_String::equals(oop java_string, const jchar* chars, int len) {
+bool java_lang_String::equals(oop java_string, jchar* chars, int len) {
   assert(java_string->klass() == SystemDictionary::String_klass(),
          "must be java_string");
   typeArrayOop value = java_lang_String::value_no_keepalive(java_string);

@@ -24,7 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/altHashing.hpp"
-#include "classfile/compactHashtable.hpp"
+#include "classfile/compactHashtable.inline.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
@@ -32,7 +32,6 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/filemap.hpp"
 #include "memory/metaspaceClosure.hpp"
-#include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -45,31 +44,13 @@
 // the number of buckets a thread claims
 const int ClaimChunkSize = 32;
 
-inline Symbol* read_symbol_from_compact_hashtable(address base_address, u4 offset) {
-  return (Symbol*)(base_address + offset);
-}
-
-inline bool symbol_equals_compact_hashtable_entry(Symbol* value, const char* key, int len) {
-  if (value->equals(key, len)) {
-    assert(value->refcount() == PERM_REFCOUNT, "must be shared");
-    return true;
-  } else {
-    return false;
-  }
-}
-
-static CompactHashtable<
-  const char*, Symbol*,
-  read_symbol_from_compact_hashtable,
-  symbol_equals_compact_hashtable_entry
-> _shared_table;
-
-// --------------------------------------------------------------------------
 SymbolTable* SymbolTable::_the_table = NULL;
 // Static arena for symbols that are not deallocated
 Arena* SymbolTable::_arena = NULL;
 bool SymbolTable::_needs_rehashing = false;
 bool SymbolTable::_lookup_shared_first = false;
+
+CompactHashtable<Symbol*, char> SymbolTable::_shared_table;
 
 Symbol* SymbolTable::allocate_symbol(const u1* name, int len, bool c_heap, TRAPS) {
   assert (len <= Symbol::max_length(), "should be checked by caller");
@@ -99,20 +80,10 @@ void SymbolTable::initialize_symbols(int arena_alloc_size) {
   }
 }
 
-class SharedSymbolIterator {
-  SymbolClosure* _symbol_closure;
-public:
-  SharedSymbolIterator(SymbolClosure* f) : _symbol_closure(f) {}
-  void do_value(Symbol* symbol) {
-    _symbol_closure->do_symbol(&symbol);
-  }
-};
-
 // Call function for all symbols in the symbol table.
 void SymbolTable::symbols_do(SymbolClosure *cl) {
   // all symbols from shared table
-  SharedSymbolIterator iter(cl);
-  _shared_table.iterate(&iter);
+  _shared_table.symbols_do(cl);
 
   // all symbols from the dynamic table
   const int n = the_table()->table_size();
@@ -610,24 +581,6 @@ void SymbolTable::dump(outputStream* st, bool verbose) {
   }
 }
 
-#if INCLUDE_CDS
-class CompactSymbolTableWriter: public CompactHashtableWriter {
-public:
-  CompactSymbolTableWriter(int num_buckets, CompactHashtableStats* stats) :
-    CompactHashtableWriter(num_buckets, stats) {}
-  void add(unsigned int hash, Symbol *symbol) {
-    uintx deltax = MetaspaceShared::object_delta(symbol);
-    // When the symbols are stored into the archive, we already check that
-    // they won't be more than MAX_SHARED_DELTA from the base address, or
-    // else the dumping would have been aborted.
-    assert(deltax <= MAX_SHARED_DELTA, "must not be");
-    u4 delta = u4(deltax);
-
-    CompactHashtableWriter::add(hash, delta);
-  }
-};
-#endif
-
 void SymbolTable::write_to_archive() {
 #if INCLUDE_CDS
     _shared_table.reset();
@@ -646,7 +599,7 @@ void SymbolTable::write_to_archive() {
       }
     }
 
-    writer.dump(&_shared_table, "symbol");
+    writer.dump(&_shared_table);
 
     // Verify table is correct
     Symbol* sym = vmSymbols::java_lang_Object();
@@ -659,6 +612,7 @@ void SymbolTable::write_to_archive() {
 
 void SymbolTable::serialize(SerializeClosure* soc) {
 #if INCLUDE_CDS
+  _shared_table.set_type(CompactHashtable<Symbol*, char>::_symbol_table);
   _shared_table.serialize(soc);
 
   if (soc->writing()) {

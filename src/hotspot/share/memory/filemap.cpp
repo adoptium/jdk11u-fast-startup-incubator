@@ -26,6 +26,7 @@
 #include "jvm.h"
 #include "classfile/classLoader.inline.hpp"
 #include "classfile/classLoaderExt.hpp"
+#include "classfile/compactHashtable.inline.hpp"
 #include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionaryShared.hpp"
