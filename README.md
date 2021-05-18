@@ -23,7 +23,7 @@ We have drafted the first feasible milestone. Please feel free to add milestones
   - Apply @jiangli's [initial prototype](http://cr.openjdk.java.net/~jiangli/Leyden/general_class_pre_initialization_core_mechanism/general_class_pre_init_patch_1) and additional changes & enhancements based on 2). (@Google + @Alibaba)
   - Moreover, support pre-initializing classes which are specified by users via a class list file. This provides the functionality of specifying a class list of safe classes, it works as starting points for future static analyzer tool. (@Alibaba)
 + A static analyzer for identifying unsafe classes that can not be used for pre-initialization(@Alibaba)
-  - Feed a class list(-XX:DumpedLoadedClassList) to the static analyser, whose <clinit>() methods are entry points of pre-initialisation safety analysis
+  - Feed a class list(-XX:DumpedLoadedClassList) to the static analyser, whose `<clinit>()` methods are entry points of pre-initialisation safety analysis
   - Based on pre-initialisation safety analysis, generate safe class list for VM side.
 + AOT(@Alibaba)
   - Leveraging class pre-initialization to: 
