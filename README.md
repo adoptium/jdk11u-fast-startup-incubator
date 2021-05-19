@@ -7,5 +7,5 @@ for additional information.
 
 Areas of current interest include (but not limited to):
  * General class pre-initialization
- * Static analyzer for identifying unsafe pre-initialization
- * AOT
+ * A static analyzer for identifying unsafe class pre-initialization
+ * Use ahead-of-time (AOT) compilation and generate more efficient code
