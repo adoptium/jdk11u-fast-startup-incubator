@@ -6,6 +6,6 @@ see [Eclipse Adoptium Incubator](https://projects.eclipse.org/projects/adoptium.
 for additional information.
 
 Areas of current interest include (but not limited to):
- * General class pre-initialization
- * Static analyzer for identifying unsafe pre-initialization
+ * Class pre-initialization support framework in JVM
+ * Static analyzer to identify classes that are safe to pre-initialization
  * AOT
