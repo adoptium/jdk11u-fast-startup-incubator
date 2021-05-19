@@ -96,8 +96,6 @@ class TempNewSymbol : public StackObj {
   operator Symbol*()                             { return _temp; }
 };
 
-template <class T, class N> class CompactHashtable;
-
 class SymbolTable : public RehashableHashtable<Symbol*, mtSymbol> {
   friend class VMStructs;
   friend class ClassFileParser;
@@ -113,9 +111,6 @@ private:
   // For statistics
   static int _symbols_removed;
   static int _symbols_counted;
-
-  // shared symbol table.
-  static CompactHashtable<Symbol*, char> _shared_table;
 
   Symbol* allocate_symbol(const u1* name, int len, bool c_heap, TRAPS); // Assumes no characters larger than 0x7F
 
