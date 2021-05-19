@@ -59,6 +59,7 @@ class MetaspaceShared : AllStatic {
   static bool _archive_loading_failed;
   static bool _remapped_readwrite;
   static bool _open_archive_heap_region_mapped;
+  static bool _archive_heap_region_fixed;
   static address _cds_i2i_entry_code_buffers;
   static size_t  _cds_i2i_entry_code_buffers_size;
   static size_t  _core_spaces_size;
@@ -70,14 +71,10 @@ class MetaspaceShared : AllStatic {
     ro = 2,  // read-only shared space in the heap
     md = 3,  // miscellaneous data for initializing tables, etc.
     num_core_spaces = 4, // number of non-string regions
-
-    // optional mapped spaces
-    // Currently it only contains class file data.
-    od = num_core_spaces,
-    num_non_heap_spaces = od + 1,
+    num_non_heap_spaces = 4,
 
     // mapped java heap regions
-    first_string = od + 1, // index of first string region
+    first_string = md + 1, // index of first string region
     max_strings = 2, // max number of string regions in string space
     last_string = first_string + max_strings - 1,
     first_open_archive_heap_region = first_string + max_strings,
@@ -114,9 +111,17 @@ class MetaspaceShared : AllStatic {
   static oop archive_heap_object(oop obj, Thread* THREAD);
   static oop materialize_archived_object(narrowOop v);
   static void archive_klass_objects(Thread* THREAD);
+
+  static void set_archive_heap_region_fixed() {
+    _archive_heap_region_fixed = true;
+  }
+
+  static bool archive_heap_region_fixed() {
+    return _archive_heap_region_fixed;
+  }
 #endif
 
-  static bool is_archive_object(oop p) NOT_CDS_JAVA_HEAP_RETURN_(false);
+  inline static bool is_archive_object(oop p) NOT_CDS_JAVA_HEAP_RETURN_(false);
 
   static bool is_heap_object_archiving_allowed() {
     CDS_JAVA_HEAP_ONLY(return (UseG1GC && UseCompressedOops && UseCompressedClassPointers);)
@@ -148,6 +153,8 @@ class MetaspaceShared : AllStatic {
   }
   static void commit_shared_space_to(char* newtop) NOT_CDS_RETURN;
   static size_t core_spaces_size() {
+    assert(DumpSharedSpaces || UseSharedSpaces, "sanity");
+    assert(_core_spaces_size != 0, "sanity");
     return _core_spaces_size;
   }
   static void initialize_dumptime_shared_and_meta_spaces() NOT_CDS_RETURN;

@@ -1176,7 +1176,7 @@ InstanceKlass* SystemDictionary::load_shared_class(
   if (ik != NULL &&
       ik->is_shared_boot_class() && class_loader.is_null()) {
     Handle protection_domain;
-    return load_shared_class(ik, class_loader, protection_domain, THREAD);
+    return load_shared_class(ik, class_loader, protection_domain, NULL, THREAD);
   }
   return NULL;
 }
@@ -1276,7 +1276,9 @@ bool SystemDictionary::is_shared_class_visible(Symbol* class_name,
 
 InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
                                                    Handle class_loader,
-                                                   Handle protection_domain, TRAPS) {
+                                                   Handle protection_domain,
+                                                   const ClassFileStream *cfs,
+                                                   TRAPS) {
 
   if (ik != NULL) {
     Symbol* class_name = ik->name();
@@ -1323,7 +1325,7 @@ InstanceKlass* SystemDictionary::load_shared_class(InstanceKlass* ik,
     }
 
     InstanceKlass* new_ik = KlassFactory::check_shared_class_file_load_hook(
-        ik, class_name, class_loader, protection_domain, CHECK_NULL);
+        ik, class_name, class_loader, protection_domain, cfs, CHECK_NULL);
     if (new_ik != NULL) {
       // The class is changed by CFLH. Return the new class. The shared class is
       // not used.
@@ -2001,6 +2003,22 @@ void SystemDictionary::resolve_well_known_classes(TRAPS) {
 #if INCLUDE_CDS
   if (UseSharedSpaces) {
     resolve_wk_klasses_through(WK_KLASS_ENUM_NAME(Object_klass), scan, CHECK);
+
+    // It's unsafe to access the archived heap regions before they
+    // are fixed up, so we must do the fixup as early as possible
+    // before the archived java objects are accessed by functions
+    // such as java_lang_Class::restore_archived_mirror and
+    // ConstantPool::restore_unshareable_info (restores the archived
+    // resolved_references array object).
+    //
+    // MetaspaceShared::fixup_mapped_heap_regions() fills the empty
+    // spaces in the archived heap regions and may use
+    // SystemDictionary::Object_klass(), so we can do this only after
+    // Object_klass is resolved. See the above resolve_wk_klasses_through()
+    // call. No mirror objects are accessed/restored in the above call.
+    // Mirrors are restored after java.lang.Class is loaded.
+    MetaspaceShared::fixup_mapped_heap_regions();
+
     // Initialize the constant pool for the Object_class
     Object_klass()->constants()->restore_unshareable_info(CHECK);
     resolve_wk_klasses_through(WK_KLASS_ENUM_NAME(Class_klass), scan, CHECK);

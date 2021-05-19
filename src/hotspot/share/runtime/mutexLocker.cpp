@@ -149,6 +149,10 @@ Monitor* CodeHeapStateAnalytics_lock  = NULL;
 Mutex*   MetaspaceExpand_lock         = NULL;
 Mutex*   ThreadIdTableCreate_lock     = NULL;
 
+#if INCLUDE_CDS && INCLUDE_JVMTI
+Mutex*   CDSClassFileStream_lock      = NULL;
+#endif
+
 #define MAX_NUM_MUTEX 128
 static Monitor * _mutex_array[MAX_NUM_MUTEX];
 static int _num_mutex;
@@ -331,6 +335,9 @@ void mutex_init() {
 
   def(CodeHeapStateAnalytics_lock  , PaddedMutex  , nonleaf+6,   false, Monitor::_safepoint_check_always);
   def(ThreadIdTableCreate_lock     , PaddedMutex  , leaf,        false, Monitor::_safepoint_check_always);
+#if INCLUDE_CDS && INCLUDE_JVMTI
+  def(CDSClassFileStream_lock      , PaddedMutex  , max_nonleaf, false, Monitor::_safepoint_check_always);
+#endif
 }
 
 GCMutexLocker::GCMutexLocker(Monitor * mutex) {

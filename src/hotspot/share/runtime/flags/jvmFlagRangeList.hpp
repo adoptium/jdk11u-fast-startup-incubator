@@ -25,7 +25,6 @@
 #ifndef SHARE_VM_RUNTIME_JVMFLAGRANGELIST_HPP
 #define SHARE_VM_RUNTIME_JVMFLAGRANGELIST_HPP
 
-#include "memory/metaspaceShared.hpp"
 #include "runtime/flags/jvmFlag.hpp"
 #include "utilities/growableArray.hpp"
 
