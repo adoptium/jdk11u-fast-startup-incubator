@@ -610,31 +610,13 @@ void SymbolTable::dump(outputStream* st, bool verbose) {
   }
 }
 
-#if INCLUDE_CDS
-class CompactSymbolTableWriter: public CompactHashtableWriter {
-public:
-  CompactSymbolTableWriter(int num_buckets, CompactHashtableStats* stats) :
-    CompactHashtableWriter(num_buckets, stats) {}
-  void add(unsigned int hash, Symbol *symbol) {
-    uintx deltax = MetaspaceShared::object_delta(symbol);
-    // When the symbols are stored into the archive, we already check that
-    // they won't be more than MAX_SHARED_DELTA from the base address, or
-    // else the dumping would have been aborted.
-    assert(deltax <= MAX_SHARED_DELTA, "must not be");
-    u4 delta = u4(deltax);
-
-    CompactHashtableWriter::add(hash, delta);
-  }
-};
-#endif
-
 void SymbolTable::write_to_archive() {
 #if INCLUDE_CDS
     _shared_table.reset();
 
-    int num_buckets = the_table()->number_of_entries() /
-                            SharedSymbolTableBucketSize;
-    CompactSymbolTableWriter writer(num_buckets,
+    int num_buckets = CompactHashtableWriter::default_num_buckets(
+        SymbolTable::the_table()->number_of_entries());
+    CompactHashtableWriter writer(num_buckets,
                                     &MetaspaceShared::stats()->symbol);
     for (int i = 0; i < the_table()->table_size(); ++i) {
       HashtableEntry<Symbol*, mtSymbol>* p = the_table()->bucket(i);
@@ -642,7 +624,14 @@ void SymbolTable::write_to_archive() {
         Symbol* s = (Symbol*)(p->literal());
       unsigned int fixed_hash =  hash_shared_symbol((char*)s->bytes(), s->utf8_length());
         assert(fixed_hash == p->hash(), "must not rehash during dumping");
-        writer.add(fixed_hash, s);
+
+        uintx deltax = MetaspaceShared::object_delta(s);
+        // When the symbols are stored into the archive, we already check that
+        // they won't be more than MAX_SHARED_DELTA from the base address, or
+        // else the dumping would have been aborted.
+        assert(deltax <= MAX_SHARED_DELTA, "must not be");
+        u4 delta = u4(deltax);
+        writer.add(fixed_hash, delta);
       }
     }
 
@@ -657,9 +646,9 @@ void SymbolTable::write_to_archive() {
 #endif
 }
 
-void SymbolTable::serialize(SerializeClosure* soc) {
+void SymbolTable::serialize_shared_table_header(SerializeClosure* soc) {
 #if INCLUDE_CDS
-  _shared_table.serialize(soc);
+  _shared_table.serialize_header(soc);
 
   if (soc->writing()) {
     // Sanity. Make sure we don't use the shared table at dump time

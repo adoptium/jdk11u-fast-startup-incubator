@@ -252,7 +252,7 @@ public:
 
   // Sharing
   static void write_to_archive();
-  static void serialize(SerializeClosure* soc);
+  static void serialize_shared_table_header(SerializeClosure* soc);
   static u4 encode_shared(Symbol* sym);
   static Symbol* decode_shared(u4 offset);
 
