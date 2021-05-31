@@ -41,6 +41,7 @@
 
 class BoolObjectClosure;
 class outputStream;
+class CompactHashtableWriter;
 class SerializeClosure;
 
 // TempNewSymbol acts as a handle class in a handle/body idiom and is
@@ -251,8 +252,8 @@ public:
   static void read(const char* filename, TRAPS);
 
   // Sharing
-  static void write_to_archive();
-  static void serialize(SerializeClosure* soc);
+  static void write_to_archive() NOT_CDS_RETURN;
+  static void serialize_shared_table_header(SerializeClosure* soc) NOT_CDS_RETURN;
   static u4 encode_shared(Symbol* sym);
   static Symbol* decode_shared(u4 offset);
 
