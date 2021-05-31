@@ -159,7 +159,7 @@ inline bool G1ArchiveAllocator::is_open_archive_object(oop object) {
   return (archive_check_enabled() && in_open_archive_range(object));
 }
 
-inline bool G1ArchiveAllocator::is_archive_object(oop object) {
+inline bool G1ArchiveAllocator::is_archived_object(oop object) {
   return (archive_check_enabled() && (in_closed_archive_range(object) ||
                                       in_open_archive_range(object)));
 }
