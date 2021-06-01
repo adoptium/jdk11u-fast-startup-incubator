@@ -35,8 +35,9 @@
 #include "gc/shared/gcConfig.hpp"
 #include "gc/shared/genCollectedHeap.hpp"
 #include "jvmtifiles/jvmtiEnv.hpp"
+#include "memory/heapShared.inline.hpp"
+#include "memory/metaspaceShared.hpp"
 #include "memory/metadataFactory.hpp"
-#include "memory/metaspaceShared.inline.hpp"
 #include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
@@ -1788,7 +1789,7 @@ WB_END
 
 WB_ENTRY(jboolean, WB_IsShared(JNIEnv* env, jobject wb, jobject obj))
   oop obj_oop = JNIHandles::resolve(obj);
-  return MetaspaceShared::is_archive_object(obj_oop);
+  return HeapShared::is_archived_object(obj_oop);
 WB_END
 
 WB_ENTRY(jboolean, WB_IsSharedClass(JNIEnv* env, jobject wb, jclass clazz))
@@ -1812,7 +1813,7 @@ WB_ENTRY(jobject, WB_GetResolvedReferences(JNIEnv* env, jobject wb, jclass clazz
 WB_END
 
 WB_ENTRY(jboolean, WB_AreOpenArchiveHeapObjectsMapped(JNIEnv* env))
-  return MetaspaceShared::open_archive_heap_region_mapped();
+  return HeapShared::open_archive_heap_region_mapped();
 WB_END
 
 WB_ENTRY(jboolean, WB_IsCDSIncludedInVmBuild(JNIEnv* env))
@@ -1830,7 +1831,7 @@ WB_ENTRY(jboolean, WB_IsCDSIncludedInVmBuild(JNIEnv* env))
 WB_END
 
 WB_ENTRY(jboolean, WB_IsJavaHeapArchiveSupported(JNIEnv* env))
-  return MetaspaceShared::is_heap_object_archiving_allowed();
+  return HeapShared::is_heap_object_archiving_allowed();
 WB_END
 
 
