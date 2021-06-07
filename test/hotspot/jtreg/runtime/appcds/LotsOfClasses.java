@@ -57,6 +57,9 @@ public class LotsOfClasses {
         opts.addSuffix("--add-modules");
         opts.addSuffix("ALL-SYSTEM");
         opts.addSuffix("-Xlog:hashtables");
+        opts.addSuffix("-Xmx500m");
+        opts.addSuffix("-Xlog:gc+region+cds");
+        opts.addSuffix("-Xlog:gc+region=trace");
 
         OutputAnalyzer out = CDSTestUtils.createArchive(opts);
         CDSTestUtils.checkDump(out);

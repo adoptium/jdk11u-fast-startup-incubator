@@ -29,7 +29,7 @@
  * @library /test/hotspot/jtreg/runtime/appcds /test/lib
  * @modules jdk.jartool/sun.tools.jar
  * @build HelloString
- * @run main SharedStringsStress
+ * @run driver/timeout=500 SharedStringsStress
  */
 import java.io.File;
 import java.io.FileOutputStream;
@@ -48,7 +48,8 @@ public class SharedStringsStress {
             out.println("VERSION: 1.0");
             out.println("@SECTION: String");
             out.println("31: shared_test_string_unique_14325");
-            for (int i=0; i<100000; i++) {
+            // Reduced the number of generated strings due to time-out risk
+            for (int i=0; i<10000; i++) {
                 String s = "generated_string " + i;
                 out.println(s.length() + ": " + s);
             }
