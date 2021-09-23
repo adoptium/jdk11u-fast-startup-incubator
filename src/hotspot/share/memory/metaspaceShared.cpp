@@ -1715,6 +1715,8 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     }
     tty->print_cr("Reading extra data: done.");
 
+    HeapShared::init_subgraph_entry_fields(THREAD);
+
     // Rewrite and link classes
     tty->print_cr("Rewriting and linking classes ...");
 
@@ -1733,7 +1735,6 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     }
 
     SystemDictionary::clear_invoke_method_table();
-    HeapShared::init_subgraph_entry_fields(THREAD);
 
     SystemDictionaryShared::finalize_verification_constraints();
 
