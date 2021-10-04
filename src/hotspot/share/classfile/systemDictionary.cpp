@@ -40,6 +40,7 @@
 #include "classfile/resolutionErrors.hpp"
 #include "classfile/stringTable.hpp"
 #include "classfile/systemDictionary.hpp"
+#include "classfile/verifier.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
@@ -1814,7 +1815,20 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
   // Link into hierachy. Make sure the vtables are initialized before linking into
   k->append_to_sibling_list();                    // add to superklass/sibling list
   k->process_interfaces(THREAD);                  // handle all "implements" declarations
-  k->set_init_state(InstanceKlass::loaded);
+  if (k->is_linked()) {
+    assert(k->is_shared(), "must be a shared class");
+    // Shared classes for builtin loaders are in fully 'linked' state after
+    // restoration.
+    //
+    // If verification is disabled (-Xverify:none), no additional loader
+    // constraint check is needed after restoration, in which case all shared
+    // classes are in fully 'linked' state once loaded and restored.
+    assert(Verifier::verify_disabled() ||
+           k->class_loader_data()->is_builtin_class_loader_data(),
+           "invalid state for shared class");
+  } else {
+    k->set_init_state(InstanceKlass::loaded);
+  }
   // Now flush all code that depended on old class hierarchy.
   // Note: must be done *after* linking k into the hierarchy (was bug 12/9/97)
   // Also, first reinitialize vtable because it may have gotten out of synch
