@@ -1036,6 +1036,11 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
     if (class_load_start_event.should_commit()) {
       post_class_load_event(&class_load_start_event, k, loader_data);
     }
+    if (k->is_shared() && k->is_linked()) {
+      if (JvmtiExport::should_post_class_prepare()) {
+        JvmtiExport::post_class_prepare((JavaThread *)THREAD, k);
+      }
+    }
   }
   assert(host_klass != NULL || NULL == cp_patches,
          "cp_patches only found with host_klass");
@@ -1628,6 +1633,11 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
 
   }
   post_class_define_event(k, loader_data);
+  if (k->is_shared() && k->is_linked()) {
+    if (JvmtiExport::should_post_class_prepare()) {
+      JvmtiExport::post_class_prepare((JavaThread *)THREAD, k);
+    }
+  }
 }
 
 // Support parallel classloading
