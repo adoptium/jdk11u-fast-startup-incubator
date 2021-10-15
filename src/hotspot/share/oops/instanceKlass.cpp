@@ -807,19 +807,16 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
         SystemDictionaryShared::check_verification_constraints(this, CHECK_false);
       }
 
-      // relocate jsrs and link methods after they are all rewritten
-      link_methods(CHECK_false);
+      // link_methods and itable/vtable reinitialization are done at
+      // restoration time for archived classes.
+      if (!is_shared()) {
+        // relocate jsrs and link methods after they are all rewritten
+        link_methods(CHECK_false);
 
-      // Initialize the vtable and interface table after
-      // methods have been rewritten since rewrite may
-      // fabricate new Method*s.
-      // also does loader constraint checking
-      //
-      // initialize_vtable and initialize_itable need to be rerun for
-      // a shared class if the class is not loaded by the NULL classloader.
-      ClassLoaderData * loader_data = class_loader_data();
-      if (!(is_shared() &&
-            loader_data->is_the_null_class_loader_data())) {
+        // Initialize the vtable and interface table after
+        // methods have been rewritten since rewrite may
+        // fabricate new Method*s.
+        // also does loader constraint checking
         ResourceMark rm(THREAD);
         vtable().initialize_vtable(true, CHECK_false);
         itable().initialize_itable(true, CHECK_false);
@@ -2363,7 +2360,12 @@ void InstanceKlass::restore_unshareable_info(ClassLoaderData* loader_data, Handl
     methodHandle m(THREAD, methods->at(index2));
     m->restore_unshareable_info(CHECK);
   }
-  if (JvmtiExport::has_redefined_a_class()) {
+
+  // Reinitialize vtable and itable need to be done for a
+  // shared class if the class is not loaded by the NULL classloader,
+  // or if a class is redefined.
+  if (JvmtiExport::has_redefined_a_class() ||
+      !loader_data->is_the_null_class_loader_data()) {
     // Reinitialize vtable because RedefineClasses may have changed some
     // entries in this vtable for super classes so the CDS vtable might
     // point to old or obsolete entries.  RedefineClasses doesn't fix up
@@ -2381,6 +2383,17 @@ void InstanceKlass::restore_unshareable_info(ClassLoaderData* loader_data, Handl
     // Array classes have null protection domain.
     // --> see ArrayKlass::complete_create_array_klass()
     array_klasses()->restore_unshareable_info(ClassLoaderData::the_null_class_loader_data(), Handle(), CHECK);
+  }
+
+  // At the end of restoration, an archived class for builtin loader is in
+  // fully linked state, set the _init_state to 'linked'.
+  //
+  // If verification is disabled (-Xverify:none), no additional loader
+  // constraint check is needed after restoration, in which case all shared
+  // classes are in fully 'linked' state once loaded and restored.
+  if (Verifier::verify_disabled() ||
+      loader_data->is_builtin_class_loader_data()) {
+    _init_state = linked;
   }
 }
 

@@ -53,6 +53,12 @@ class Verifier : AllStatic {
   static void log_end_verification(outputStream* st, const char* klassName, Symbol* exception_name, TRAPS);
   static bool verify(InstanceKlass* klass, Mode mode, bool should_verify_class, TRAPS);
 
+  static bool verify_disabled() {
+    // Check if verification is disabled for all JDK and application classes
+    // (-Xverify:none).
+    return !BytecodeVerificationLocal && !BytecodeVerificationRemote;
+  }
+
   // Return false if the class is loaded by the bootstrap loader,
   // or if defineClass was called requesting skipping verification
   // -Xverify:all/none override this value

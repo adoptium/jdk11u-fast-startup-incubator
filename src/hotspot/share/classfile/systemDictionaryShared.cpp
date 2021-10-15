@@ -779,18 +779,16 @@ bool SystemDictionaryShared::add_verification_constraint(Klass* k, Symbol* name,
     guarantee(strstr(k->name()->as_C_string(), "Lambda$") != NULL,
               "class should be in dictionary before being verified");
     return true;
-  }
-  entry->add_verification_constraint(name, from_name, from_field_is_protected,
-                                     from_is_array, from_is_object);
-  if (entry->is_builtin()) {
+  } else if (entry->is_builtin()) {
     // For builtin class loaders, we can try to complete the verification check at dump time,
     // because we can resolve all the constraint classes.
     return false;
-  } else {
-    // For non-builtin class loaders, we cannot complete the verification check at dump time,
-    // because at dump time we don't know how to resolve classes for such loaders.
-    return true;
   }
+  entry->add_verification_constraint(name, from_name, from_field_is_protected,
+                                     from_is_array, from_is_object);
+  // For non-builtin class loaders, we cannot complete the verification check at dump time,
+  // because at dump time we don't know how to resolve classes for such loaders.
+  return true;
 }
 
 void SystemDictionaryShared::finalize_verification_constraints_for(InstanceKlass* k) {
