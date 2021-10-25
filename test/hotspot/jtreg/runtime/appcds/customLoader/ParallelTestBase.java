@@ -85,7 +85,8 @@ public class ParallelTestBase {
         }
 
         OutputAnalyzer output;
-        TestCommon.testDump(appJar, TestCommon.concat(app_list, cust_list));
+        TestCommon.testDump(appJar, TestCommon.concat(app_list, cust_list),
+                            "-XX:DumpWithParallelism=1");
 
         String loaderTypeArg = (loaderType == SINGLE_CUSTOM_LOADER) ? "SINGLE_CUSTOM_LOADER" : "MULTI_CUSTOM_LOADER";
         String modeArg = "FINGERPRINT_MODE";

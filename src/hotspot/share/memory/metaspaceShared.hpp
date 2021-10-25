@@ -61,6 +61,9 @@ class MetaspaceShared : AllStatic {
   static address _cds_i2i_entry_code_buffers;
   static size_t  _cds_i2i_entry_code_buffers_size;
   static size_t  _core_spaces_size;
+
+  static bool _is_in_parallel_phase;
+
  public:
   enum {
     // core archive spaces
@@ -83,10 +86,17 @@ class MetaspaceShared : AllStatic {
     n_regions =  last_valid_region + 1 // total number of regions
   };
 
+  static bool is_in_parallel_phase() {
+    CDS_ONLY(return _is_in_parallel_phase);
+    NOT_CDS(return false);
+  }
+
   static void prepare_for_dumping() NOT_CDS_RETURN;
   static void preload_and_dump(TRAPS) NOT_CDS_RETURN;
   static int preload_classes(const char * class_list_path,
                              TRAPS) NOT_CDS_RETURN_(0);
+  static void preprocess_for_dumping_during_parallel_phase(
+                             Klass* k,Thread* THREAD) NOT_CDS_RETURN;
 
   static GrowableArray<Klass*>* collected_klasses();
 
@@ -191,5 +201,16 @@ class MetaspaceShared : AllStatic {
 
 private:
   static void read_extra_data(const char* filename, TRAPS) NOT_CDS_RETURN;
+
+  static void collect_archivable_classes() NOT_CDS_RETURN;
+
+  static bool try_link_and_set_error_state(
+      InstanceKlass* ik, TRAPS) NOT_CDS_RETURN;
+
+  static void rewrite_nofast_bytecodes_and_calculate_fingerprints(
+      InstanceKlass* ik) NOT_CDS_RETURN;
+
+  static void resolve_constants_and_update_constMethods(
+      Thread* THREAD) NOT_CDS_RETURN;
 };
 #endif // SHARE_VM_MEMORY_METASPACESHARED_HPP

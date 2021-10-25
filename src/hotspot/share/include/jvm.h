@@ -68,6 +68,10 @@ extern "C" {
 JNIEXPORT jint JNICALL
 JVM_GetInterfaceVersion(void);
 
+// CDS archiving support.
+JNIEXPORT void JNICALL
+JVM_PreprocessClassAtDumpTime(JNIEnv *env, jclass k);
+
 /*************************************************************************
  PART 1: Functions for Native Libraries
  ************************************************************************/

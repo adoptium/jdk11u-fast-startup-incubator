@@ -217,7 +217,7 @@ void Dictionary::remove_classes_in_error_state() {
     for (DictionaryEntry** p = bucket_addr(index); *p != NULL; ) {
       probe = *p;
       InstanceKlass* ik = probe->instance_klass();
-      if (ik->is_in_error_state()) { // purge this entry
+      if (ik->is_in_error_state_and_not_archived()) { // purge this entry
         *p = probe->next();
         free_entry(probe);
         ResourceMark rm;

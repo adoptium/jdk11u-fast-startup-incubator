@@ -2489,6 +2489,15 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Special mode: JVM reads a class list, loads classes, builds "    \
           "shared spaces, and dumps the shared spaces to a file to be "     \
           "used in future JVM runs")                                        \
+  /* Google: Perform parallel class loading, linking and other          */  \
+  /*         parallel-capable preprocessing operations in different     */  \
+  /*         Java threads to speed up CDS archive creation. The number  */  \
+  /*         of Java threads is determined by DumpWithParallelism       */  \
+  /*         value. If DumpWithParallelism is 1, all CDS archiving      */  \
+  /*         operations are done using one thread.                      */  \
+  product(int, DumpWithParallelism, 4,                                      \
+          "Load and pre-process classes in parallel during CDS dumping")    \
+          range(1, 128)                                                     \
                                                                             \
   product(bool, PrintSharedArchiveAndExit, false,                           \
           "Print shared archive file contents")                             \

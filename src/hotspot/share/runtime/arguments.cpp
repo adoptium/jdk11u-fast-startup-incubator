@@ -3168,6 +3168,10 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
 
 #if INCLUDE_CDS
   if (DumpSharedSpaces) {
+    if (ActiveProcessorCount > 0 && FLAG_IS_DEFAULT(DumpWithParallelism)) {
+      FLAG_SET_ERGO(int, DumpWithParallelism, ActiveProcessorCount);
+    }
+
     // Disable biased locking now as it interferes with the clean up of
     // the archived Klasses and Java string objects (at dump time only).
     UseBiasedLocking = false;

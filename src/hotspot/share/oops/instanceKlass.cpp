@@ -708,8 +708,8 @@ bool InstanceKlass::link_class_or_fail(TRAPS) {
   return is_linked();
 }
 
-bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
-  if (DumpSharedSpaces && is_in_error_state()) {
+void InstanceKlass::check_error_state(TRAPS) {
+  if (DumpSharedSpaces && is_in_error_state_and_not_archived()) {
     // This is for CDS dumping phase only -- we use the in_error_state to indicate that
     // the class has failed verification. Throwing the NoClassDefFoundError here is just
     // a convenient way to stop repeat attempts to verify the same (bad) class.
@@ -722,8 +722,11 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
                        vmSymbols::java_lang_NoClassDefFoundError(),
                        "Class %s, or one of its supertypes, failed class initialization",
                        external_name());
-    return false;
   }
+}
+
+bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
+  check_error_state(CHECK_false);
   // return if already verified
   if (is_linked()) {
     return true;
@@ -762,6 +765,7 @@ bool InstanceKlass::link_class_impl(bool throw_verifyerror, TRAPS) {
   }
 
   // in case the class is linked in the process of linking its superclasses
+  check_error_state(CHECK_false);
   if (is_linked()) {
     return true;
   }
@@ -2285,7 +2289,7 @@ void InstanceKlass::metaspace_pointers_do(MetaspaceClosure* it) {
 void InstanceKlass::remove_unshareable_info() {
   Klass::remove_unshareable_info();
 
-  if (is_in_error_state()) {
+  if (is_in_error_state_and_not_archived()) {
     // Classes are attempted to link during dumping and may fail,
     // but these classes are still in the dictionary and class list in CLD.
     // Check in_error state first because in_error is > linked state, so
@@ -2397,15 +2401,16 @@ void InstanceKlass::restore_unshareable_info(ClassLoaderData* loader_data, Handl
   }
 }
 
-// returns true IFF is_in_error_state() has been changed as a result of this call.
+// returns true IFF is_in_error_state_and_not_archived has been changed
+// as a result of this call.
 bool InstanceKlass::check_sharing_error_state() {
   assert(DumpSharedSpaces, "should only be called during dumping");
-  bool old_state = is_in_error_state();
+  bool old_state = is_in_error_state_and_not_archived();
 
-  if (!is_in_error_state()) {
+  if (!is_in_error_state_and_not_archived()) {
     bool bad = false;
     for (InstanceKlass* sup = java_super(); sup; sup = sup->java_super()) {
-      if (sup->is_in_error_state()) {
+      if (sup->is_in_error_state_and_not_archived()) {
         bad = true;
         break;
       }
@@ -2414,7 +2419,7 @@ bool InstanceKlass::check_sharing_error_state() {
       Array<Klass*>* interfaces = transitive_interfaces();
       for (int i = 0; i < interfaces->length(); i++) {
         Klass* iface = interfaces->at(i);
-        if (InstanceKlass::cast(iface)->is_in_error_state()) {
+        if (iface->is_in_error_state_and_not_archived()) {
           bad = true;
           break;
         }
@@ -2422,11 +2427,11 @@ bool InstanceKlass::check_sharing_error_state() {
     }
 
     if (bad) {
-      set_in_error_state();
+      set_is_in_error_state_and_not_archived();
     }
   }
 
-  return (old_state != is_in_error_state());
+  return (old_state != is_in_error_state_and_not_archived());
 }
 
 #if INCLUDE_JVMTI

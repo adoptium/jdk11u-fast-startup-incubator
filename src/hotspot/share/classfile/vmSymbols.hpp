@@ -130,6 +130,8 @@
   template(jdk_internal_loader_ClassLoaders_AppClassLoader,      "jdk/internal/loader/ClassLoaders$AppClassLoader")      \
   template(jdk_internal_loader_ClassLoaders_PlatformClassLoader, "jdk/internal/loader/ClassLoaders$PlatformClassLoader") \
                                                                                                   \
+  template(jdk_internal_vm_CDSParallelPreProcessor,   "jdk/internal/vm/CDSParallelPreProcessor")  \
+                                                                                                  \
   /* Java runtime version access */                                                               \
   template(java_lang_VersionProps,                    "java/lang/VersionProps")                   \
   template(java_runtime_name_name,                    "java_runtime_name")                        \
@@ -430,6 +432,8 @@
   template(vmdependencies_name,                       "vmdependencies")                           \
   template(loader_name,                               "loader")                                   \
   template(getModule_name,                            "getModule")                                \
+  template(preLoadAndProcess_name,                    "preLoadAndProcess")                        \
+  template(preLoadAndProcess_method_signature,        "(Ljava/lang/String;I)I")                   \
   template(input_stream_void_signature,               "(Ljava/io/InputStream;)V")                 \
   template(input_stream_signature,                    "Ljava/io/InputStream;")                    \
   template(print_stream_signature,                    "Ljava/io/PrintStream;")                    \
