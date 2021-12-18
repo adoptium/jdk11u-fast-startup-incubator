@@ -60,7 +60,8 @@ public class UnintendedLoadersTest {
         OutputAnalyzer output;
         TestCommon.testDump(appJar, classlist,
                             // command-line arguments ...
-                            use_whitebox_jar);
+                            use_whitebox_jar,
+                            "-XX:DumpWithParallelism=1");
 
         output = TestCommon.exec(appJar,
                                  // command-line arguments ...

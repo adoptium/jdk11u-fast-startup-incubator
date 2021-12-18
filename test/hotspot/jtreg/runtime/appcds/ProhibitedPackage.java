@@ -54,7 +54,7 @@ public class ProhibitedPackage {
 
             // Make sure a class in a prohibited package for a custom loader
             // will be ignored during dumping.
-            TestCommon.dump(appJar,  classlist, "-Xlog:cds")
+            TestCommon.dump(appJar,  classlist, "-Xlog:cds", "-XX:DumpWithParallelism=1")
                 .shouldContain("Dumping")
                 .shouldContain("[cds] Prohibited package for non-bootstrap classes: java/lang/Prohibited.class")
                 .shouldHaveExitValue(0);

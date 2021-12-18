@@ -1245,10 +1245,6 @@ public:
   u2 idnum_allocated_count() const      { return _idnum_allocated_count; }
 
 public:
-  void set_in_error_state() {
-    assert(DumpSharedSpaces, "only call this when dumping archive");
-    _init_state = initialization_error;
-  }
   bool check_sharing_error_state();
 
 private:
@@ -1279,6 +1275,7 @@ public:
 private:
   void fence_and_clear_init_lock();
 
+  void check_error_state                         (TRAPS);
   bool link_class_impl                           (bool throw_verifyerror, TRAPS);
   bool verify_code                               (bool throw_verifyerror, TRAPS);
   void initialize_impl                           (TRAPS);

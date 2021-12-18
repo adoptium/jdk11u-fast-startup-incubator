@@ -55,6 +55,7 @@
 #include "oops/typeArrayKlass.hpp"
 #include "prims/jvmtiRedefineClasses.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/javaCalls.hpp"
 #include "runtime/os.hpp"
 #include "runtime/safepointVerifiers.hpp"
 #include "runtime/signature.hpp"
@@ -78,6 +79,7 @@ bool MetaspaceShared::_remapped_readwrite = false;
 address MetaspaceShared::_cds_i2i_entry_code_buffers = NULL;
 size_t MetaspaceShared::_cds_i2i_entry_code_buffers_size = 0;
 size_t MetaspaceShared::_core_spaces_size = 0;
+bool MetaspaceShared::_is_in_parallel_phase = false;
 
 // The CDS archive is divided into the following regions:
 //     mc  - misc code (the method entry trampolines)
@@ -483,37 +485,77 @@ GrowableArray<Klass*>* MetaspaceShared::collected_klasses() {
 }
 
 static void collect_array_classes(Klass* k) {
+  assert(k->is_array_klass(), "sanity");
   _global_klass_objects->append_if_missing(k);
-  if (k->is_array_klass()) {
-    // Add in the array classes too
-    ArrayKlass* ak = ArrayKlass::cast(k);
-    Klass* h = ak->higher_dimension();
-    if (h != NULL) {
-      h->array_klasses_do(collect_array_classes);
-    }
+  // Add in the array classes too
+  ArrayKlass* ak = ArrayKlass::cast(k);
+  Klass* h = ak->higher_dimension();
+  if (h != NULL) {
+    h->array_klasses_do(collect_array_classes);
   }
 }
 
 class CollectClassesClosure : public KlassClosure {
+  size_t instance_klass_count = 0;
+  size_t obj_array_count = 0;
+  size_t type_array_count = 0;
+
   void do_klass(Klass* k) {
-    if (!(k->is_instance_klass() && InstanceKlass::cast(k)->is_in_error_state())) {
+    assert(!MetaspaceShared::is_in_parallel_phase(),
+           "should be called in non-parallel phase only");
+    if (!k->is_instance_klass() || !k->is_in_error_state_and_not_archived()) {
       if (k->is_instance_klass() && InstanceKlass::cast(k)->signers() != NULL) {
         // Mark any class with signers and don't add to the _global_klass_objects
         k->set_has_signer_and_not_archived();
       } else {
         _global_klass_objects->append_if_missing(k);
-      }
-    }
-    if (k->is_array_klass()) {
-      // Add in the array classes too
-      ArrayKlass* ak = ArrayKlass::cast(k);
-      Klass* h = ak->higher_dimension();
-      if (h != NULL) {
-        h->array_klasses_do(collect_array_classes);
+        if (k->is_instance_klass()) {
+          instance_klass_count ++;
+        } else {
+          assert(k->is_array_klass(), "must be");
+          if (k->is_objArray_klass()) {
+            obj_array_count ++;
+          } else {
+            assert(k->is_typeArray_klass(), "sanity");
+            type_array_count ++;
+          }
+
+          // Add in the higher dimension array classes too
+          Klass* h = ArrayKlass::cast(k)->higher_dimension();
+          if (h != NULL) {
+            h->array_klasses_do(collect_array_classes);
+          }
+        }
       }
     }
   }
+
+ public:
+  size_t num_instance_klass() { return instance_klass_count; }
+  size_t num_obj_array()      { return obj_array_count; }
+  size_t num_type_array()     { return type_array_count; }
 };
+
+// Use 200,000 as the initial size for _global_klass_objects to
+// avoid growing the array for the majority of the cases.
+const static int initial_global_klass_objects_size = 200000;
+
+void MetaspaceShared::collect_archivable_classes() {
+  _global_klass_objects =
+    new GrowableArray<Klass*>(initial_global_klass_objects_size);
+  CollectClassesClosure collect_classes_closure;
+  ClassLoaderDataGraph::loaded_classes_do(&collect_classes_closure);
+
+  tty->print_cr("Number of classes %d", _global_klass_objects->length());
+  {
+    tty->print_cr("    instance classes   = %5d",
+                  collect_classes_closure.num_instance_klass());
+    tty->print_cr("    obj array classes  = %5d",
+                  collect_classes_closure.num_obj_array());
+    tty->print_cr("    type array classes = %5d",
+                  collect_classes_closure.num_type_array());
+  }
+}
 
 static void remove_unshareable_in_classes() {
   for (int i = 0; i < _global_klass_objects->length(); i++) {
@@ -571,22 +613,51 @@ static void rewrite_nofast_bytecode(Method* method) {
   }
 }
 
-// Walk all methods in the class list to ensure that they won't be modified at
+// Walk all methods in the class to ensure that they won't be modified at
 // run time. This includes:
 // [1] Rewrite all bytecodes as needed, so that the ConstMethod* will not be modified
 //     at run time by RewriteBytecodes/RewriteFrequentPairs
 // [2] Assign a fingerprint, so one doesn't need to be assigned at run-time.
-static void rewrite_nofast_bytecodes_and_calculate_fingerprints() {
+void MetaspaceShared::rewrite_nofast_bytecodes_and_calculate_fingerprints(
+         InstanceKlass* ik) {
+  if (_is_in_parallel_phase) {
+    if (!ik->atomic_set_done_nofast_bycode_rewriting()) {
+      // nofast_bycode_rewriting has done previously or is done in another
+      // thread.
+      return;
+    }
+  } else {
+    if (ik->done_nofast_bycode_rewriting()) {
+      return;
+    }
+    ik->set_done_nofast_bycode_rewriting();
+  }
+
+  for (int i = 0; i < ik->methods()->length(); i++) {
+    Method* m = ik->methods()->at(i);
+    rewrite_nofast_bytecode(m);
+    Fingerprinter fp(m);
+    // The side effect of this call sets method's fingerprint field.
+    fp.fingerprint();
+  }
+
+  assert(ik->done_nofast_bycode_rewriting(),
+         "done_nofast_bycode_rewriting flag is not set");
+}
+
+void MetaspaceShared::resolve_constants_and_update_constMethods(Thread* THREAD) {
+  assert(!_is_in_parallel_phase, "can only be called during parallel phase");
   for (int i = 0; i < _global_klass_objects->length(); i++) {
     Klass* k = _global_klass_objects->at(i);
     if (k->is_instance_klass()) {
       InstanceKlass* ik = InstanceKlass::cast(k);
-      for (int i = 0; i < ik->methods()->length(); i++) {
-        Method* m = ik->methods()->at(i);
-        rewrite_nofast_bytecode(m);
-        Fingerprinter fp(m);
-        // The side effect of this call sets method's fingerprint field.
-        fp.fingerprint();
+
+      ik->constants()->resolve_class_constants(THREAD);
+
+      // Ensure the ConstMethods won't be modified at run-time.
+      // No locking is needed during non-parallel phase.
+      if (!ik->done_nofast_bycode_rewriting()) {
+        rewrite_nofast_bytecodes_and_calculate_fingerprints(ik);
       }
     }
   }
@@ -1384,37 +1455,6 @@ void VM_PopulateDumpSharedSpace::doit() {
             SystemDictionary::invoke_method_table()->number_of_entries() == 0,
             "invoke method table is not saved");
 
-  // At this point, many classes have been loaded.
-  // Gather systemDictionary classes in a global array and do everything to
-  // that so we don't have to walk the SystemDictionary again.
-  _global_klass_objects = new GrowableArray<Klass*>(1000);
-  CollectClassesClosure collect_classes;
-  ClassLoaderDataGraph::loaded_classes_do(&collect_classes);
-
-  tty->print_cr("Number of classes %d", _global_klass_objects->length());
-  {
-    int num_type_array = 0, num_obj_array = 0, num_inst = 0;
-    for (int i = 0; i < _global_klass_objects->length(); i++) {
-      Klass* k = _global_klass_objects->at(i);
-      if (k->is_instance_klass()) {
-        num_inst ++;
-      } else if (k->is_objArray_klass()) {
-        num_obj_array ++;
-      } else {
-        assert(k->is_typeArray_klass(), "sanity");
-        num_type_array ++;
-      }
-    }
-    tty->print_cr("    instance classes   = %5d", num_inst);
-    tty->print_cr("    obj array classes  = %5d", num_obj_array);
-    tty->print_cr("    type array classes = %5d", num_type_array);
-  }
-
-  // Ensure the ConstMethods won't be modified at run-time
-  tty->print("Updating ConstMethods ... ");
-  rewrite_nofast_bytecodes_and_calculate_fingerprints();
-  tty->print_cr("done. ");
-
   // Move classes from platform/system dictionaries into the boot dictionary
   SystemDictionary::combine_shared_dictionaries();
 
@@ -1592,8 +1632,6 @@ class LinkSharedClassesClosure : public KlassClosure {
       // to -Xverify setting.
       _made_progress |= MetaspaceShared::try_link_class(ik, THREAD);
       guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
-
-      ik->constants()->resolve_class_constants(THREAD);
     }
   }
 };
@@ -1624,6 +1662,8 @@ void MetaspaceShared::check_shared_class_loader_type(InstanceKlass* ik) {
 }
 
 void MetaspaceShared::link_and_cleanup_shared_classes(TRAPS) {
+  assert(!_is_in_parallel_phase, "should be called in non-parallel phase only");
+
   // We need to iterate because verification may cause additional classes
   // to be loaded.
   LinkSharedClassesClosure link_closure(THREAD);
@@ -1662,6 +1702,38 @@ void MetaspaceShared::prepare_for_dumping() {
 
 // Preload classes from a list, populate the shared spaces and dump to a
 // file.
+//
+// If DumpWithParallelism is >1, the operations are divided into a parallel
+// phase and a non-parallel phase. Otherwise, all operations are done within
+// one thread.
+//
+// - Parallel phase:
+//
+//   The static CDSParallelPreProcessor.preLoadAndProcess() method is the
+//   entry point of the parallel phase.
+//
+//   During the parallel phase, the classlist is split into a number of sublists
+//   based on the DumpWithParallelism flag value and processed parallelly in
+//   different threads. Classes on the list are loaded but not explicitly
+//   initialized. Loaded classes are linked and verified (when required).
+//
+//   CDSParallelPreProcessor.preLoadAndProcess() waits for all parallel tasks
+//   until they are completed, and transfers the control back to the VM, which
+//   then enters the non-parallel phase.
+//
+// - Non-parallel phase:
+//
+//   * Initialize classes with archived static fields.
+//   * Iterate ClassLoaderDataGraph and link/verify any classes that are not
+//     linked. Verification may cause more classes being loaded.
+//   * Collect archivable classes.
+//   * Resolve constants.
+//   * Write nofast bytecodes.
+//   * Remove unsharable data.
+//   * Copy class metadata.
+//   * Copy Java heap objects.
+//   * Write archive file.
+//
 void MetaspaceShared::preload_and_dump(TRAPS) {
   { TraceTime timer("Dump Shared Spaces", TRACETIME_LOG(Info, startuptime));
     ResourceMark rm;
@@ -1727,6 +1799,15 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     link_and_cleanup_shared_classes(CATCH);
     tty->print_cr("Rewriting and linking classes: done");
 
+    // At this point, all classes have been loaded.
+    // Gather systemDictionary classes in a global array and do everything to
+    // that so we don't have to walk the SystemDictionary again.
+    collect_archivable_classes();
+
+    tty->print("Resolving constants and updating ConstMethods ... ");
+    resolve_constants_and_update_constMethods(THREAD);
+    tty->print_cr("done. ");
+
     if (HeapShared::is_heap_object_archiving_allowed()) {
       // Avoid fragmentation while archiving heap objects.
       Universe::heap()->soft_ref_policy()->set_should_clear_all_soft_refs(true);
@@ -1745,8 +1826,47 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
 
 
 int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
-  ClassListParser parser(class_list_path);
   int class_count = 0;
+
+  // Google:
+  //
+  // If DumpWithParallelism is >1, load and preprocess classes in parallel.
+  // Otherwise, load classes in the old fashioned way within a single thread.
+  //
+  // Please see comments above MetaspaceShared::preload_and_dump for the
+  // parallel phase. The parallel operations do not handle the experimental
+  // support for 'source:' in the classlist. All JDK and application classes
+  // loaded by the builtin class loaders do not use 'source:' in the classlist.
+  if (DumpWithParallelism > 1) {
+    _is_in_parallel_phase = true;
+    Handle classlist_path_str = java_lang_String::create_from_str(
+                                  class_list_path, CHECK_0);
+    Klass* CDSPreprocessor_k = SystemDictionary::resolve_or_fail(
+      vmSymbols::jdk_internal_vm_CDSParallelPreProcessor(), true, CHECK_0);
+    JavaValue result(T_INT);
+    JavaCallArguments args;
+    args.push_oop(classlist_path_str);
+    args.push_int(DumpWithParallelism);
+    JavaCalls::call_static(&result,
+                           CDSPreprocessor_k,
+                           vmSymbols::preLoadAndProcess_name(),
+                           vmSymbols::preLoadAndProcess_method_signature(),
+                           &args,
+                           THREAD);
+    class_count = result.get_jint();
+    if (HAS_PENDING_EXCEPTION) {
+      vm_exit_during_initialization("Loading classlist failed");
+    }
+
+    _is_in_parallel_phase = false;
+  } else {
+    // Google:
+    // Load classes in the old fashioned way within a single thread. This
+    // block of code is kept for the experimental support for 'source:'
+    // in classlist, which is checked by some the CDS tests. The cleanup of the
+    // experimental support should be done in upstream directly, then the
+    // else block can be removed.
+    ClassListParser parser(class_list_path);
 
     while (parser.parse_one_line()) {
       Klass* klass = ClassLoaderExt::load_one_class(&parser, THREAD);
@@ -1778,14 +1898,38 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
         class_count++;
       }
     }
-
+  }
   return class_count;
+}
+
+bool MetaspaceShared::try_link_and_set_error_state(InstanceKlass* ik, TRAPS) {
+  assert(DumpSharedSpaces, "should only be called during dumping");
+  ik->link_class(THREAD);
+  if (HAS_PENDING_EXCEPTION) {
+    ResourceMark rm;
+    tty->print_cr("Preload Warning: Verification failed for %s",
+                  ik->external_name());
+    CLEAR_PENDING_EXCEPTION;
+
+    if (_is_in_parallel_phase) {
+      ik->atomic_set_is_in_error_state_and_not_archived();
+    } else {
+      ik->set_is_in_error_state_and_not_archived();
+    }
+    assert(ik->is_in_error_state_and_not_archived(),
+           "is_in_error_state_and_not_archived flag is not set");
+    return false;
+  }
+  return true;
 }
 
 // Returns true if the class's status has changed
 bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
   assert(DumpSharedSpaces, "should only be called during dumping");
-  if (ik->init_state() < InstanceKlass::linked) {
+  assert(!_is_in_parallel_phase, "should be called in non-parallel phase only");
+
+  bool klass_in_error = ik->is_in_error_state_and_not_archived();
+  if (!ik->is_linked() && !klass_in_error) {
     bool saved = BytecodeVerificationLocal;
     if (ik->loader_type() == 0 && ik->class_loader() == NULL) {
       // The verification decision is based on BytecodeVerificationRemote
@@ -1797,19 +1941,37 @@ bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
       // dumping.
       BytecodeVerificationLocal = BytecodeVerificationRemote;
     }
-    ik->link_class(THREAD);
-    if (HAS_PENDING_EXCEPTION) {
-      ResourceMark rm;
-      tty->print_cr("Preload Warning: Verification failed for %s",
-                    ik->external_name());
-      CLEAR_PENDING_EXCEPTION;
-      ik->set_in_error_state();
+    if (!try_link_and_set_error_state(ik, THREAD)) {
       _has_error_classes = true;
     }
     BytecodeVerificationLocal = saved;
     return true;
   } else {
+    if (klass_in_error) {
+      _has_error_classes = true;
+    }
     return false;
+  }
+}
+
+// Used during parallel phase.
+void MetaspaceShared::preprocess_for_dumping_during_parallel_phase(Klass* k,
+                                                                   Thread* THREAD) {
+  assert(DumpSharedSpaces, "should only be called during dumping");
+  assert(_is_in_parallel_phase, "can only be called during parallel phase");
+
+  if (k->is_instance_klass()) {
+    InstanceKlass* ik = InstanceKlass::cast(k);
+    assert(ik->loader_type() != 0, "loader type is not set");
+
+    if (!ik->is_linked()) {
+      if (!try_link_and_set_error_state(ik, THREAD)) {
+        // has error
+        return;
+      }
+    }
+
+    rewrite_nofast_bytecodes_and_calculate_fingerprints(ik);
   }
 }
 

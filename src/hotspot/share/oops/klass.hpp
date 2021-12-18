@@ -28,9 +28,11 @@
 #include "classfile/classLoaderData.hpp"
 #include "memory/iterator.hpp"
 #include "memory/memRegion.hpp"
+#include "memory/metaspaceShared.hpp"
 #include "oops/metadata.hpp"
 #include "oops/oop.hpp"
 #include "oops/oopHandle.hpp"
+#include "runtime/atomic.hpp"
 #include "utilities/accessFlags.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_JFR
@@ -174,10 +176,19 @@ private:
 
 #if INCLUDE_CDS
   // Flags of the current shared class.
-  u2     _shared_class_flags;
+  volatile u2     _shared_class_flags;
+
+  // The _has_raw_archived_mirror and _has_signer_and_not_archived flags are
+  // set during non-parallel phase at dump time.
+  //
+  // The _is_in_error_state_and_not_archived and _done_nofast_bycode_rewriting
+  // flags may be set during both parallel and non-parallel phases at dump
+  // time.
   enum {
     _has_raw_archived_mirror = 1,
-    _has_signer_and_not_archived = 1 << 2
+    _has_signer_and_not_archived = 1 << 2,
+    _is_in_error_state_and_not_archived = 1 << 3,
+    _done_nofast_bycode_rewriting = 1 << 4,
   };
 #endif
   // The _archived_mirror is set at CDS dump time pointing to the cached mirror
@@ -316,12 +327,86 @@ protected:
     NOT_CDS(return false;)
   }
 #if INCLUDE_CDS
+  // Atomically load and store the klass _shared_class_flags. Can be used
+  // during parallel phase at dump time. On x86 platform, the compiler
+  // generates instruction to read and write 16-bit _shared_class_flags
+  // atomically. The Atomic::load and Atomic::store below are translated as nop
+  // effectively. The generated code remain as the same. That's expected
+  // for most modern compilers on different architectures.
+  u2 shared_class_flags() {
+    return Atomic::load(&_shared_class_flags);
+  }
+  void set_shared_class_flags(u2 v) {
+    Atomic::store(v, &_shared_class_flags);
+  }
+
   void set_has_signer_and_not_archived() {
     _shared_class_flags |= _has_signer_and_not_archived;
   }
   bool has_signer_and_not_archived() const {
     assert(DumpSharedSpaces, "dump time only");
     return (_shared_class_flags & _has_signer_and_not_archived) != 0;
+  }
+
+  void set_done_nofast_bycode_rewriting() {
+    assert(DumpSharedSpaces, "only call this when dumping archive");
+    assert(!MetaspaceShared::is_in_parallel_phase(),
+           "should be called in non-parallel phase only");
+    _shared_class_flags |= _done_nofast_bycode_rewriting;
+  }
+  bool atomic_set_done_nofast_bycode_rewriting() {
+    assert(DumpSharedSpaces, "only call this when dumping archive");
+    assert(MetaspaceShared::is_in_parallel_phase(),
+           "should be called in parallel phase only");
+    u2 old_v;
+    u2 new_v;
+    // Loop is needed as another thread may set a different bit in the flag
+    // concurrently, and the result of Atomic::cmpxchg is different from the
+    // old_v. Need to retry when that happens.
+    do {
+      old_v = shared_class_flags();
+      if ((old_v & _done_nofast_bycode_rewriting) != 0) {
+        // flag is set by aother thread or is already set previously
+        return false;
+      }
+      new_v = old_v | _done_nofast_bycode_rewriting;
+    } while (Atomic::cmpxchg(new_v, &_shared_class_flags, old_v) != old_v);
+    // set the flag successfully
+    return true;
+  }
+  bool done_nofast_bycode_rewriting() {
+    assert(DumpSharedSpaces, "only call this when dumping archive");
+    return (shared_class_flags() & _done_nofast_bycode_rewriting) != 0;
+  }
+
+  void set_is_in_error_state_and_not_archived() {
+    assert(DumpSharedSpaces, "only call this when dumping archive");
+    assert(!MetaspaceShared::is_in_parallel_phase(),
+           "should be called in non-parallel phase only");
+    _shared_class_flags |= _is_in_error_state_and_not_archived;
+  }
+  void atomic_set_is_in_error_state_and_not_archived() {
+    assert(DumpSharedSpaces, "only call this when dumping archive");
+    assert(MetaspaceShared::is_in_parallel_phase(),
+           "should be called in parallel phase only");
+
+    u2 old_v;
+    u2 new_v;
+    // Loop is needed as another thread may set a different bit in the flag
+    // concurrently, and the result of Atomic::cmpxchg is different from the
+    // old_v. Need to retry when that happens.
+    do {
+      old_v = shared_class_flags();
+      if ((old_v & _is_in_error_state_and_not_archived) != 0) {
+        // flag is set
+        return;
+      }
+      new_v = old_v | _is_in_error_state_and_not_archived;
+    } while (Atomic::cmpxchg(new_v, &_shared_class_flags, old_v) != old_v);
+  }
+  bool is_in_error_state_and_not_archived() {
+    assert(DumpSharedSpaces, "dump time only");
+    return (shared_class_flags() & _is_in_error_state_and_not_archived) != 0;
   }
 #endif // INCLUDE_CDS
 

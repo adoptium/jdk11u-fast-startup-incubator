@@ -599,6 +599,13 @@ JVM_ENTRY(jint, JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, 
                                    start_index, frames_array_h, THREAD);
 JVM_END
 
+JVM_ENTRY(void, JVM_PreprocessClassAtDumpTime(JNIEnv *env, jclass k))
+  oop k_oop = JNIHandles::resolve(k);
+  assert(k_oop != NULL, "sanity");
+  Klass* k_k = java_lang_Class::as_Klass(k_oop);
+  MetaspaceShared::preprocess_for_dumping_during_parallel_phase(k_k, THREAD);
+JVM_END
+
 // java.lang.Object ///////////////////////////////////////////////
 
 
