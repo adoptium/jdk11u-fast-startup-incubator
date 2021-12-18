@@ -282,7 +282,7 @@ class HeapShared: AllStatic {
 
  public:
   static bool is_heap_object_archiving_allowed() {
-    CDS_JAVA_HEAP_ONLY(return (UseG1GC && UseCompressedOops && UseCompressedClassPointers);)
+    CDS_JAVA_HEAP_ONLY(return (UseHeapObjectArchiving && UseG1GC && UseCompressedOops && UseCompressedClassPointers);)
     NOT_CDS_JAVA_HEAP(return false;)
   }
 
