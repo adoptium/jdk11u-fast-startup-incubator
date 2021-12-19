@@ -881,6 +881,10 @@ public:
 
 void HeapShared::init_subgraph_entry_fields(ArchivableStaticFieldInfo fields[],
                                             int num, Thread* THREAD) {
+  if (!PreInitializeArchivedClass) {
+    return;
+  }
+
   for (int i = 0; i < num; i++) {
     ArchivableStaticFieldInfo* info = &fields[i];
     TempNewSymbol klass_name =  SymbolTable::new_symbol(info->klass_name, THREAD);
@@ -917,6 +921,10 @@ void HeapShared::init_subgraph_entry_fields(Thread* THREAD) {
 void HeapShared::archive_object_subgraphs(ArchivableStaticFieldInfo fields[],
                                           int num, bool is_closed_archive,
                                           Thread* THREAD) {
+  if (!PreInitializeArchivedClass) {
+    return;
+  }
+
   _num_total_subgraph_recordings = 0;
   _num_total_walked_objs = 0;
   _num_total_archived_objs = 0;
