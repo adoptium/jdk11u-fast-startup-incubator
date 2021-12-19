@@ -985,8 +985,9 @@ MemRegion FileMapInfo::get_heap_regions_range_with_current_oop_encoding_mode() {
 // open archive objects.
 void FileMapInfo::map_heap_regions_impl() {
   if (!HeapShared::is_heap_object_archiving_allowed()) {
-    log_info(cds)("CDS heap data is being ignored. UseG1GC, "
-                  "UseCompressedOops and UseCompressedClassPointers are required.");
+    log_info(cds)("CDS heap data is being ignored. UseHeapObjectArchiving, "
+                  "UseG1GC, UseCompressedOops and UseCompressedClassPointers "
+                  "are required.");
     return;
   }
 

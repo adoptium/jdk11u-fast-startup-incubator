@@ -2498,6 +2498,12 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   product(int, DumpWithParallelism, 4,                                      \
           "Load and pre-process classes in parallel during CDS dumping")    \
           range(1, 128)                                                     \
+  /* Google: DisableHeapObjectArchiving is currently a Google JVM */        \
+  /*         internal option. It is planned to upstream this to OpenJDK. */ \
+  product(bool, UseHeapObjectArchiving, true,                               \
+          "Use heap object archiving. Note that heap archiving is only "    \
+          "available with G1 GC, so this flag will only have an effect if " \
+          "G1 GC is enabled.")                                              \
                                                                             \
   product(bool, PrintSharedArchiveAndExit, false,                           \
           "Print shared archive file contents")                             \

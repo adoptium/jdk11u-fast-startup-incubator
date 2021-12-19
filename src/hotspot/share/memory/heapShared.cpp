@@ -184,10 +184,12 @@ void HeapShared::archive_java_heap_objects(GrowableArray<MemRegion> *closed,
   if (!is_heap_object_archiving_allowed()) {
     if (log_is_enabled(Info, cds)) {
       log_info(cds)(
-        "Archived java heap is not supported as UseG1GC, "
-        "UseCompressedOops and UseCompressedClassPointers are required."
-        "Current settings: UseG1GC=%s, UseCompressedOops=%s, UseCompressedClassPointers=%s.",
-        BOOL_TO_STR(UseG1GC), BOOL_TO_STR(UseCompressedOops),
+        "Archived java heap is not supported as UseHeapObjectArchiving, "
+        "UseG1GC, UseCompressedOops and UseCompressedClassPointers are "
+        "required. Current settings: UseHeapObjectArchiving=%s, UseG1GC=%s, "
+        "UseCompressedOops=%s, UseCompressedClassPointers=%s.",
+        BOOL_TO_STR(UseHeapObjectArchiving),BOOL_TO_STR(UseG1GC),
+        BOOL_TO_STR(UseCompressedOops),
         BOOL_TO_STR(UseCompressedClassPointers));
     }
     return;

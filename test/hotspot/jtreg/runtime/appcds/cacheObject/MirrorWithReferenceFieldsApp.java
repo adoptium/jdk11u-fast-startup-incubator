@@ -75,7 +75,7 @@ public class MirrorWithReferenceFieldsApp {
             // Check fields
 
             if (wb.isShared(archived_field)) {
-                System.out.println("archived_field is archived as excepted");
+                System.out.println("archived_field is archived as expected");
             } else {
                 throw new RuntimeException(
                     "FAILED. archived_field is not archived.");
