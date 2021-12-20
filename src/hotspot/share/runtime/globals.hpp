@@ -2489,6 +2489,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Special mode: JVM reads a class list, loads classes, builds "    \
           "shared spaces, and dumps the shared spaces to a file to be "     \
           "used in future JVM runs")                                        \
+                                                                            \
   /* Google: Perform parallel class loading, linking and other          */  \
   /*         parallel-capable preprocessing operations in different     */  \
   /*         Java threads to speed up CDS archive creation. The number  */  \
@@ -2504,6 +2505,14 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Use heap object archiving. Note that heap archiving is only "    \
           "available with G1 GC, so this flag will only have an effect if " \
           "G1 GC is enabled.")                                              \
+                                                                            \
+  /* Google: PreInitializeArchivedClass is a Google JVM internal option. */ \
+  /*         The flag can be used for comparing performance differences  */ \
+  /*         with and without the general class pre-initialization       */ \
+  /*         support. */                                                    \
+  product(bool, PreInitializeArchivedClass, true,                           \
+          "Support pre-initializing and preserving selected classes and "   \
+          "individual static fields during static CDS dump time.")          \
                                                                             \
   product(bool, PrintSharedArchiveAndExit, false,                           \
           "Print shared archive file contents")                             \
