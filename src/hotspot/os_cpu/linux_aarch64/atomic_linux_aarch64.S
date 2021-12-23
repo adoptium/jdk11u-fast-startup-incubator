@@ -84,6 +84,20 @@ aarch64_atomic_cmpxchg_1_default_impl:
         dmb     ish
         ret
 
+        .globl aarch64_atomic_cmpxchg_2_default_impl
+        .align 5
+aarch64_atomic_cmpxchg_2_default_impl:
+        dmb     ish
+        prfm    pstl1strm, [x0]
+0:      ldxrh   w3, [x0]
+        cmp     w3, w1
+        b.ne    1f
+        stxrh   w8, w2, [x0]
+        cbnz    w8, 0b
+1:      mov     w0, w3
+        dmb     ish
+        ret
+
         .globl aarch64_atomic_cmpxchg_4_default_impl
         .align 5
 aarch64_atomic_cmpxchg_4_default_impl:
@@ -121,6 +135,18 @@ aarch64_atomic_cmpxchg_1_relaxed_default_impl:
         tst     x8, #0xff
         b.ne    1f
         stxrb   w8, w2, [x0]
+        cbnz    w8, 0b
+1:      mov     w0, w3
+        ret
+
+        .globl aarch64_atomic_cmpxchg_2_relaxed_default_impl
+        .align 5
+aarch64_atomic_cmpxchg_2_relaxed_default_impl:
+        prfm    pstl1strm, [x0]
+0:      ldxrh   w3, [x0]
+        cmp     w3, w1
+        b.ne    1f
+        stxrh   w8, w2, [x0]
         cbnz    w8, 0b
 1:      mov     w0, w3
         ret

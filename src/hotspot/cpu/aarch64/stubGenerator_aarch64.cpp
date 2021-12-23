@@ -4831,6 +4831,8 @@ class StubGenerator: public StubCodeGenerator {
     // CAS, memory_order_conservative
     AtomicStubMark mark_cmpxchg_1(_masm, &aarch64_atomic_cmpxchg_1_impl);
     gen_cas_entry(MacroAssembler::byte, memory_order_conservative);
+    AtomicStubMark mark_cmpxchg_2(_masm, &aarch64_atomic_cmpxchg_2_impl);
+    gen_cas_entry(MacroAssembler::halfword, memory_order_conservative);
     AtomicStubMark mark_cmpxchg_4(_masm, &aarch64_atomic_cmpxchg_4_impl);
     gen_cas_entry(MacroAssembler::word, memory_order_conservative);
     AtomicStubMark mark_cmpxchg_8(_masm, &aarch64_atomic_cmpxchg_8_impl);
@@ -4840,6 +4842,9 @@ class StubGenerator: public StubCodeGenerator {
     AtomicStubMark mark_cmpxchg_1_relaxed
       (_masm, &aarch64_atomic_cmpxchg_1_relaxed_impl);
     gen_cas_entry(MacroAssembler::byte, memory_order_relaxed);
+    AtomicStubMark mark_cmpxchg_2_relaxed
+      (_masm, &aarch64_atomic_cmpxchg_2_relaxed_impl);
+    gen_cas_entry(MacroAssembler::halfword, memory_order_relaxed);
     AtomicStubMark mark_cmpxchg_4_relaxed
       (_masm, &aarch64_atomic_cmpxchg_4_relaxed_impl);
     gen_cas_entry(MacroAssembler::word, memory_order_relaxed);
@@ -6122,9 +6127,11 @@ DEFAULT_ATOMIC_OP(fetch_add, 8, )
 DEFAULT_ATOMIC_OP(xchg, 4, )
 DEFAULT_ATOMIC_OP(xchg, 8, )
 DEFAULT_ATOMIC_OP(cmpxchg, 1, )
+DEFAULT_ATOMIC_OP(cmpxchg, 2, )
 DEFAULT_ATOMIC_OP(cmpxchg, 4, )
 DEFAULT_ATOMIC_OP(cmpxchg, 8, )
 DEFAULT_ATOMIC_OP(cmpxchg, 1, _relaxed)
+DEFAULT_ATOMIC_OP(cmpxchg, 2, _relaxed)
 DEFAULT_ATOMIC_OP(cmpxchg, 4, _relaxed)
 DEFAULT_ATOMIC_OP(cmpxchg, 8, _relaxed)
 
