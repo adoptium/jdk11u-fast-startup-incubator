@@ -145,6 +145,24 @@ inline T Atomic::PlatformCmpxchg<1>::operator()(T exchange_value,
 
 template<>
 template<typename T>
+inline T Atomic::PlatformCmpxchg<2>::operator()(T exchange_value,
+                                                T volatile* dest,
+                                                T compare_value,
+                                                atomic_memory_order order) const {
+  STATIC_ASSERT(2 == sizeof(T));
+  aarch64_atomic_stub_t stub;
+  switch (order) {
+  case memory_order_relaxed:
+    stub = aarch64_atomic_cmpxchg_2_relaxed_impl; break;
+  default:
+    stub = aarch64_atomic_cmpxchg_2_impl; break;
+  }
+
+  return atomic_fastcall(stub, dest, compare_value, exchange_value);
+}
+
+template<>
+template<typename T>
 inline T Atomic::PlatformCmpxchg<4>::operator()(T exchange_value,
                                                 T volatile* dest,
                                                 T compare_value,
