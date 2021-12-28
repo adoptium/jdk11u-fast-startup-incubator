@@ -57,6 +57,7 @@ import static java.lang.String.UTF16;
  * @author  Joseph D. Darcy
  * @since   1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Long extends Number implements Comparable<Long> {
     /**
      * A constant holding the minimum value a {@code long} can
@@ -1145,6 +1146,7 @@ public final class Long extends Number implements Comparable<Long> {
         return Long.valueOf(parseLong(s, 10));
     }
 
+    @jdk.internal.vm.annotation.Preserve
     private static class LongCache {
         private LongCache() {}
 
@@ -1154,8 +1156,15 @@ public final class Long extends Number implements Comparable<Long> {
         static {
             int size = -(-128) + 127 + 1;
 
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields annotated with
+            //         @Preserve. That allows application classes to take
+            //         advantage of the pre-initialization feature.
+            //
             // Load and use the archived cache if it exists
-            VM.initializeFromArchive(LongCache.class);
+            //VM.initializeFromArchive(LongCache.class);
             if (archivedCache == null || archivedCache.length != size) {
                 Long[] c = new Long[size];
                 long value = -128;

@@ -40,6 +40,7 @@
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/allocation.hpp"
+#include "memory/heapShared.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
@@ -1070,14 +1071,17 @@ public:
     _jdk_internal_vm_annotation_Contended,
     _field_Stable,
     _jdk_internal_vm_annotation_ReservedStackAccess,
+    _preserve,
     _annotation_LIMIT
   };
   const Location _location;
   int _annotations_present;
   u2 _contended_group;
+  bool _has_preserve_annotation;
 
   AnnotationCollector(Location location)
-    : _location(location), _annotations_present(0), _contended_group(0)
+    : _location(location), _annotations_present(0), _contended_group(0),
+      _has_preserve_annotation(false)
   {
     assert((int)_annotation_LIMIT <= (int)sizeof(_annotations_present) * BitsPerByte, "");
   }
@@ -1105,6 +1109,8 @@ public:
 
   void set_stable(bool stable) { set_annotation(_field_Stable); }
   bool is_stable() const { return has_annotation(_field_Stable); }
+  void set_has_preserve_annotation(bool v) { _has_preserve_annotation = v; }
+  bool has_preserve_annotation() const     { return _has_preserve_annotation; }
 };
 
 // This class also doubles as a holder for metadata cleanup.
@@ -1120,7 +1126,7 @@ public:
     _field_annotations(NULL),
     _field_type_annotations(NULL) {}
   ~FieldAnnotationCollector();
-  void apply_to(FieldInfo* f);
+  void apply_to(Symbol* class_name, ConstantPool* cp, FieldInfo* f);
   AnnotationArray* field_annotations()      { return _field_annotations; }
   AnnotationArray* field_type_annotations() { return _field_type_annotations; }
 
@@ -1287,6 +1293,15 @@ static void parse_annotations(const ConstantPool* const cp,
         }
       }
       coll->set_contended_group(group_index);
+    } else if (AnnotationCollector::_preserve == id) {
+      if (count == 0) {
+        // No argument, set _preserve to true by default.
+        coll->set_has_preserve_annotation(true);
+      } else if (count == 1) {
+        u2 v_index = Bytes::get_Java_u2((address)abase + s_con_off);
+        bool v = ((ConstantPool*)cp)->int_at(v_index);
+        coll->set_has_preserve_annotation(v);
+      }
     }
   }
 }
@@ -1622,6 +1637,10 @@ void ClassFileParser::parse_fields(const ClassFileStream* const cfs,
     const bool is_static = access_flags.is_static();
     FieldAnnotationCollector parsed_annotations(_loader_data);
 
+    if (is_static) {
+      _has_clinit_or_static_field = true;
+    }
+
     const u2 attributes_count = cfs->get_u2_fast();
     if (attributes_count > 0) {
       parse_field_attributes(cfs,
@@ -1679,7 +1698,7 @@ void ClassFileParser::parse_fields(const ClassFileStream* const cfs,
 
     // After field is initialized with type, we can augment it with aux info
     if (parsed_annotations.has_any_annotations())
-      parsed_annotations.apply_to(field);
+      parsed_annotations.apply_to(_class_name, cp, field);
   }
 
   int index = length;
@@ -2146,6 +2165,14 @@ AnnotationCollector::annotation_index(const ClassLoaderData* loader_data,
       if (RestrictReservedStack && !privileged) break; // honor privileges
       return _jdk_internal_vm_annotation_ReservedStackAccess;
     }
+    /* For application class pre-initialization support.
+    case vmSymbols::VM_SYMBOL_ENUM_NAME(com_google_common_annotations_Preserve_signature): {
+      return _preserve;
+    }
+    */
+    case vmSymbols::VM_SYMBOL_ENUM_NAME(jdk_internal_vm_annotation_Preserve_signature):     {
+      return _preserve;
+    }
     default: {
       break;
     }
@@ -2153,11 +2180,16 @@ AnnotationCollector::annotation_index(const ClassLoaderData* loader_data,
   return AnnotationCollector::_unknown;
 }
 
-void ClassFileParser::FieldAnnotationCollector::apply_to(FieldInfo* f) {
+void ClassFileParser::FieldAnnotationCollector::apply_to(Symbol* class_name,
+                                                         ConstantPool* cp,
+                                                         FieldInfo* f) {
   if (is_contended())
     f->set_contended_group(contended_group());
   if (is_stable())
     f->set_stable(true);
+  if (has_preserve_annotation()) {
+    HeapShared::add_preservable_static_field(class_name, f->name(cp));
+  }
 }
 
 ClassFileParser::FieldAnnotationCollector::~FieldAnnotationCollector() {
@@ -2188,6 +2220,9 @@ void MethodAnnotationCollector::apply_to(const methodHandle& m) {
 void ClassFileParser::ClassAnnotationCollector::apply_to(InstanceKlass* ik) {
   assert(ik != NULL, "invariant");
   ik->set_is_contended(is_contended());
+  if (has_preserve_annotation()) {
+    HeapShared::set_can_preserve(ik, true);
+  }
 }
 
 #define MAX_ARGS_SIZE 255
@@ -2383,6 +2418,8 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
     } else {
       classfile_parse_error("Method <clinit> is not static in class file %s", CHECK_NULL);
     }
+
+    _has_clinit_or_static_field = true;
   } else {
     verify_legal_method_modifiers(flags, is_interface, name, CHECK_NULL);
   }
@@ -5806,6 +5843,13 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   // it's official
   set_klass(ik);
 
+  // A class without <clinit> may have static fields, or vice versa. Make sure
+  // we don't add a class to the preservable class list if there is any static
+  // fields or it has <clinit>.
+  if (!_has_clinit_or_static_field && !ik->is_anonymous()) {
+    HeapShared::set_can_preserve(ik, false);
+  }
+
   debug_only(ik->verify();)
 }
 
@@ -5926,6 +5970,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
   _relax_verify(false),
   _has_nonstatic_concrete_methods(false),
   _declares_nonstatic_concrete_methods(false),
+  _has_clinit_or_static_field(false),
   _has_final_method(false),
   _has_finalizer(false),
   _has_empty_finalizer(false),

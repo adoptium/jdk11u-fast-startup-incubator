@@ -102,6 +102,7 @@ import jdk.internal.vm.annotation.Stable;
  * @spec JPMS
  * @see java.lang.ModuleLayer
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Configuration {
 
     // @see Configuration#empty()
@@ -109,8 +110,15 @@ public final class Configuration {
     private static @Stable Configuration EMPTY_CONFIGURATION;
 
     static {
+        // GOOGLE: With the general support for class and static field
+        //         pre-initialization, it no longer needs to call
+        //         VM.initializeFromArchive() explicitly at runtime to
+        //         load the archived value for fields annotated with
+        //         @Preserve. That allows application classes to take
+        //         advantage of the pre-initialization feature.
+        //
         // Initialize EMPTY_CONFIGURATION from the archive.
-        VM.initializeFromArchive(Configuration.class);
+        //VM.initializeFromArchive(Configuration.class);
         // Create a new empty Configuration if there is no archived version.
         if (EMPTY_CONFIGURATION == null) {
             EMPTY_CONFIGURATION = new Configuration();

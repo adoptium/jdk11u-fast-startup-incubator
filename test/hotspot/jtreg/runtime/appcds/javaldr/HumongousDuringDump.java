@@ -68,12 +68,18 @@ public class HumongousDuringDump {
                               "-Xlog:gc+region+cds",
                               "-Xlog:gc+region=trace",
                               extraArg, "-Xmx64m", gcLog);
-        out.shouldContain("(Unmovable) humongous regions have been found and may lead to fragmentation");
-        out.shouldContain("All free regions should be at the top end of the heap, but we found holes.");
-        out.shouldMatch("gc,region,cds.*HeapRegion .* HUM. hole");
-        String pattern = "gc,region,cds.*HeapRegion .*hole";
-        out.shouldMatch(pattern);
-        out.shouldNotMatch(pattern + ".*unexpected");
+        // GOOGLE: The following checks are removed as
+        //         G1HeapVerifier::verify_ready_for_archiving() has been
+        //         disabled in Google JDK.
+        //         G1HeapVerifier::verify_ready_for_archiving() is not useful
+        //         and disabling it avoids wasting CPU cycles. Please see
+        //         heapShared.cpp for more details.
+        //out.shouldContain("(Unmovable) humongous regions have been found and may lead to fragmentation");
+        //out.shouldContain("All free regions should be at the top end of the heap, but we found holes.");
+        //out.shouldMatch("gc,region,cds.*HeapRegion .* HUM. hole");
+        //String pattern = "gc,region,cds.*HeapRegion .*hole";
+        //out.shouldMatch(pattern);
+        //out.shouldNotMatch(pattern + ".*unexpected");
 
         TestCommon.run(
                 "-cp", appJar,

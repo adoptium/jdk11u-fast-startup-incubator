@@ -121,7 +121,7 @@ import jdk.internal.vm.annotation.Stable;
  * @since   1.0
  * @jls     15.18.1 String Concatenation Operator +
  */
-
+@jdk.internal.vm.annotation.Preserve
 public final class String
     implements java.io.Serializable, Comparable<String>, CharSequence {
 
@@ -1215,6 +1215,7 @@ public final class String
      */
     public static final Comparator<String> CASE_INSENSITIVE_ORDER
                                          = new CaseInsensitiveComparator();
+    @jdk.internal.vm.annotation.Preserve
     private static class CaseInsensitiveComparator
             implements Comparator<String>, java.io.Serializable {
         // use serialVersionUID from JDK 1.2.2 for interoperability

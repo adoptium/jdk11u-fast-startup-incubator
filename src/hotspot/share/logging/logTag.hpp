@@ -123,6 +123,7 @@
   LOG_TAG(plab) \
   LOG_TAG(preview)   /* Trace loading of preview feature types */ \
   LOG_TAG(promotion) \
+  LOG_TAG(preinit) \
   LOG_TAG(preorder) /* Trace all classes loaded in order referenced (not loaded) */ \
   LOG_TAG(protectiondomain) /* "Trace protection domain verification" */ \
   LOG_TAG(ref) \
@@ -149,6 +150,7 @@
   LOG_TAG(stringtable) \
   LOG_TAG(stackmap) \
   LOG_TAG(subclass) \
+  LOG_TAG(subgraphinfo) /* Trace heap archiving subgraph info records */ \
   LOG_TAG(survivor) \
   LOG_TAG(sweep) \
   LOG_TAG(system) \

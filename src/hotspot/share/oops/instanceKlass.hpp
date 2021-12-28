@@ -547,7 +547,7 @@ public:
   Method* class_initializer() const;
 
   // set the class to initialized if no static initializer is present
-  void eager_initialize(Thread *thread);
+  void eager_initialize(ClassLoaderData* loader_data, Thread *thread);
 
   // reference type
   ReferenceType reference_type() const     { return (ReferenceType)_reference_type; }
@@ -1281,6 +1281,7 @@ private:
   void initialize_impl                           (TRAPS);
   void initialize_super_interfaces               (TRAPS);
   void eager_initialize_impl                     ();
+  void shared_class_pre_initialize_impl(ClassLoaderData* loader_data, TRAPS);
   /* jni_id_for_impl for jfieldID only */
   JNIid* jni_id_for_impl                         (int offset);
 

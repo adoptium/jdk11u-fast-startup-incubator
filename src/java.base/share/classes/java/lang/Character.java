@@ -133,6 +133,7 @@ import jdk.internal.misc.VM;
  * @author  Ulf Zibis
  * @since   1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final
 class Character implements java.io.Serializable, Comparable<Character> {
     /**
@@ -7915,6 +7916,7 @@ class Character implements java.io.Serializable, Comparable<Character> {
         this.value = value;
     }
 
+    @jdk.internal.vm.annotation.Preserve
     private static class CharacterCache {
         private CharacterCache(){}
 
@@ -7924,8 +7926,15 @@ class Character implements java.io.Serializable, Comparable<Character> {
         static {
             int size = 127 + 1;
 
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields annotated with
+            //         @Preserve. That allows application classes to take
+            //         advantage of the pre-initialization feature.
+            //
             // Load and use the archived cache if it exists
-            VM.initializeFromArchive(CharacterCache.class);
+            //VM.initializeFromArchive(CharacterCache.class);
             if (archivedCache == null || archivedCache.length != size) {
                 Character[] c = new Character[size];
                 for (int i = 0; i < size; i++) {

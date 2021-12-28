@@ -1020,6 +1020,7 @@ public final class ModuleBootstrap {
     /**
      * Counters for startup performance analysis.
      */
+    @jdk.internal.vm.annotation.Preserve(false)
     static class Counters {
         private static final boolean PUBLISH_COUNTERS;
         private static final boolean PRINT_COUNTERS;

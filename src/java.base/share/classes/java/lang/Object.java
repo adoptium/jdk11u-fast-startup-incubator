@@ -36,6 +36,7 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * @see     java.lang.Class
  * @since   1.0
  */
+/* TODO(b/170313595): @jdk.internal.vm.annotation.Preserve(false) */
 public class Object {
 
     private static native void registerNatives();

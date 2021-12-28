@@ -2405,6 +2405,7 @@ public abstract class ClassLoader {
      * @see      ClassLoader
      * @since    1.2
      */
+    @jdk.internal.vm.annotation.Preserve(false)
     static class NativeLibrary {
         // the class from which the library is loaded, also indicates
         // the loader this native library belongs.

@@ -69,6 +69,8 @@
 #include "jvmci/jvmciJavaClasses.hpp"
 #endif
 
+#include "memory/iterator.inline.hpp"
+
 #define INJECTED_FIELD_COMPUTE_OFFSET(klass, name, signature, may_be_java)    \
   klass::_##name##_offset = JavaClasses::compute_injected_offset(JavaClasses::klass##_##name##_enum);
 
@@ -990,6 +992,7 @@ class ResetMirrorField: public FieldClosure {
       return;
     }
 
+    // Preserve the primitive type values within the mirror
     BasicType ft = fd->field_type();
     switch (ft) {
       case T_BYTE:
@@ -1030,6 +1033,13 @@ class ResetMirrorField: public FieldClosure {
      }
   }
 };
+
+void java_lang_Class::reset_mirror_static_fields(Klass *k, oop mirror,
+                                                 Thread *THREAD) {
+  Handle mirror_h(THREAD, mirror);
+  ResetMirrorField reset(mirror_h);
+  InstanceKlass::cast(k)->do_local_static_fields(&reset);
+}
 
 void java_lang_Class::archive_basic_type_mirrors(TRAPS) {
   assert(HeapShared::is_heap_object_archiving_allowed(),
@@ -1175,12 +1185,30 @@ oop java_lang_Class::process_archived_mirror(Klass* k, oop mirror,
   } else {
     assert(k->is_instance_klass(), "Must be");
 
-    // Reset local static fields in the mirror
-    InstanceKlass::cast(k)->do_local_static_fields(&reset);
+    Klass* orig_k = as_Klass(mirror);
+    assert(MetaspaceShared::get_relocated_klass(orig_k) == k,
+           "relocated Klass does not match");
+
+    // Mirrors are archived before preservable static fields are archived.
+    // Do not reset the static fields in a 'preservable' class prematurely.
+    // This is to ensure that primitive type static fields are preserved in
+    // the mirror properly.
+    //
+    // The preservable reference type static fields are archived by
+    // HeapShared::archive_preservable_klass_static_fields_subgraphs(). Before
+    // the process, HeapShared::check_preservable_klasses() checks all reachable
+    // subgraphs from the class static fields and rejects the class if an object
+    // that's unsuitable for archiving is detected. In that case, all static
+    // fields are reset at that time.
+    if (HeapShared::reset_klass_statics(orig_k)) {
+      // Reset local static fields in the mirror.
+      InstanceKlass::cast(k)->do_local_static_fields(&reset);
+    }
 
     java_lang_Class:set_init_lock(archived_mirror, NULL);
 
     set_protection_domain(archived_mirror, NULL);
+    set_source_file(archived_mirror, NULL);
   }
 
   // clear class loader and mirror_module_field
@@ -1506,9 +1534,13 @@ BasicType java_lang_Class::primitive_type(oop java_class) {
     // Note: create_basic_type_mirror above initializes ak to a non-null value.
     type = ArrayKlass::cast(ak)->element_type();
   } else {
-    assert(oopDesc::equals(java_class, Universe::void_mirror()), "only valid non-array primitive");
+    // GOOGLE: We may call java_lang_Class::primitive_type() after the mirror
+    //         is relocated at dump time. In that case, the primitive type
+    //         mirror object can be different from the one cached in Universe.
+    //         Therefore, the below two asserts are disabled.
+    //assert(oopDesc::equals(java_class, Universe::void_mirror()), "only valid non-array primitive");
   }
-  assert(oopDesc::equals(Universe::java_mirror(type), java_class), "must be consistent");
+  //assert(oopDesc::equals(Universe::java_mirror(type), java_class), "must be consistent");
   return type;
 }
 

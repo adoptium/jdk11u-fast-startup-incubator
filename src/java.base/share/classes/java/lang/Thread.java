@@ -139,6 +139,7 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * @see     #stop()
  * @since   1.0
  */
+/* TODO(b/170313595): @jdk.internal.vm.annotation.Preserve(false) */
 public
 class Thread implements Runnable {
     /* Make sure registerNatives is the first thing <clinit> does. */

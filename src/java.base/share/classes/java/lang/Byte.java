@@ -44,6 +44,7 @@ import jdk.internal.misc.VM;
  * @see     java.lang.Number
  * @since   1.1
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Byte extends Number implements Comparable<Byte> {
 
     /**
@@ -77,6 +78,7 @@ public final class Byte extends Number implements Comparable<Byte> {
         return Integer.toString((int)b, 10);
     }
 
+    @jdk.internal.vm.annotation.Preserve
     private static class ByteCache {
         private ByteCache() {}
 
@@ -86,8 +88,15 @@ public final class Byte extends Number implements Comparable<Byte> {
         static {
             final int size = -(-128) + 127 + 1;
 
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields annotated with
+            //         @Preserve. That allows application classes to take
+            //         advantage of the pre-initialization feature.
+            //
             // Load and use the archived cache if it exists
-            VM.initializeFromArchive(ByteCache.class);
+            //VM.initializeFromArchive(ByteCache.class);
             if (archivedCache == null || archivedCache.length != size) {
                 Byte[] c = new Byte[size];
                 byte value = (byte)-128;

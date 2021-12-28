@@ -73,6 +73,7 @@ import jdk.internal.misc.Unsafe;
  * @author  Frank Yellin
  * @since   1.0
  */
+/* TODO(b/170313595): @jdk.internal.vm.annotation.Preserve(false) */
 public
 class Random implements java.io.Serializable {
     /** use serialVersionUID from JDK 1.1 for interoperability */

@@ -385,7 +385,14 @@ void ConstantPool::remove_unshareable_info() {
   _flags |= (_on_stack | _is_shared);
   int num_klasses = 0;
   for (int index = 1; index < length(); index++) { // Index 0 is unused
-    assert(!tag_at(index).is_unresolved_klass_in_error(), "This must not happen during dump time");
+    // More <clinit> executions during dump time can cause more constant pool
+    // resolutions.
+    if (tag_at(index).is_unresolved_klass_in_error() ||
+        tag_at(index).is_method_handle_in_error()    ||
+        tag_at(index).is_method_type_in_error()      ||
+        tag_at(index).is_dynamic_constant_in_error()) {
+        tag_at_put(index, JVM_CONSTANT_UnresolvedClass);
+    }
     if (tag_at(index).is_klass()) {
       // This class was resolved as a side effect of executing Java code
       // during dump time. We need to restore it back to an UnresolvedClass,

@@ -437,6 +437,7 @@ import static java.lang.invoke.MethodHandleStatics.newInternalError;
  * @see MethodType
  * @since 9
  */
+@jdk.internal.vm.annotation.Preserve(false)
 public abstract class VarHandle {
     final VarForm vform;
 
@@ -1525,6 +1526,7 @@ public abstract class VarHandle {
     Object getAndBitwiseXorRelease(Object... args);
 
 
+    @jdk.internal.vm.annotation.Preserve
     enum AccessType {
         GET(Object.class),
         SET(void.class),
@@ -1597,6 +1599,7 @@ public abstract class VarHandle {
      * The set of access modes that specify how a variable, referenced by a
      * VarHandle, is accessed.
      */
+    @jdk.internal.vm.annotation.Preserve(false)
     public enum AccessMode {
         /**
          * The access mode whose access is specified by the corresponding

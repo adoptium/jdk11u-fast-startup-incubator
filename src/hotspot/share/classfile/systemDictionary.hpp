@@ -139,6 +139,7 @@ class OopStorage;
   do_klass(PhantomReference_klass,                      java_lang_ref_PhantomReference,            Pre                 ) \
   do_klass(Finalizer_klass,                             java_lang_ref_Finalizer,                   Pre                 ) \
                                                                                                                          \
+  do_klass(Runnable_klass,                              java_lang_Runnable,                        Opt                 ) \
   do_klass(Thread_klass,                                java_lang_Thread,                          Pre                 ) \
   do_klass(ThreadGroup_klass,                           java_lang_ThreadGroup,                     Pre                 ) \
   do_klass(Properties_klass,                            java_util_Properties,                      Pre                 ) \

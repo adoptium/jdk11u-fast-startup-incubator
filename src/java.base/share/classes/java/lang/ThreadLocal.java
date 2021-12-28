@@ -73,6 +73,7 @@ import java.util.function.Supplier;
  * @author  Josh Bloch and Doug Lea
  * @since   1.2
  */
+/* TODO(b/170313595): @jdk.internal.vm.annotation.Preserve(false) */
 public class ThreadLocal<T> {
     /**
      * ThreadLocals rely on per-thread linear-probe hash maps attached

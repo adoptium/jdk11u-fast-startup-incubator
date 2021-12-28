@@ -50,6 +50,7 @@ import java.security.Signature;
 public class SharedSecrets {
     private static final Unsafe unsafe = Unsafe.getUnsafe();
     private static JavaUtilJarAccess javaUtilJarAccess;
+    @jdk.internal.vm.annotation.Preserve
     private static JavaLangAccess javaLangAccess;
     private static JavaLangModuleAccess javaLangModuleAccess;
     private static JavaLangInvokeAccess javaLangInvokeAccess;
@@ -58,10 +59,14 @@ public class SharedSecrets {
     private static JavaNetInetAddressAccess javaNetInetAddressAccess;
     private static JavaNetHttpCookieAccess javaNetHttpCookieAccess;
     private static JavaNetSocketAccess javaNetSocketAccess;
+    @jdk.internal.vm.annotation.Preserve
     private static JavaNetUriAccess javaNetUriAccess;
+    @jdk.internal.vm.annotation.Preserve
     private static JavaNetURLAccess javaNetURLAccess;
     private static JavaNetURLClassLoaderAccess javaNetURLClassLoaderAccess;
+    @jdk.internal.vm.annotation.Preserve
     private static JavaNioAccess javaNioAccess;
+    @jdk.internal.vm.annotation.Preserve
     private static JavaIOFileDescriptorAccess javaIOFileDescriptorAccess;
     private static JavaIOFilePermissionAccess javaIOFilePermissionAccess;
     private static JavaSecurityAccess javaSecurityAccess;
@@ -76,6 +81,11 @@ public class SharedSecrets {
     private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
     private static JavaSecuritySignatureAccess javaSecuritySignatureAccess;
     private static JavaxCryptoSealedObjectAccess javaxCryptoSealedObjectAccess;
+
+    static {
+      unsafe.ensureClassInitialized(java.net.URI.class);
+      unsafe.ensureClassInitialized(java.net.URL.class);
+    }
 
     public static JavaUtilJarAccess javaUtilJarAccess() {
         if (javaUtilJarAccess == null) {

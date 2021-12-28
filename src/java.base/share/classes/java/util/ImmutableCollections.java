@@ -46,6 +46,7 @@ import jdk.internal.vm.annotation.Stable;
  * Serial warnings are suppressed throughout because all implementation
  * classes use a serial proxy and thus have no need to declare serialVersionUID.
  */
+@jdk.internal.vm.annotation.Preserve(false)
 @SuppressWarnings("serial")
 class ImmutableCollections {
     /**
@@ -71,6 +72,7 @@ class ImmutableCollections {
 
     static UnsupportedOperationException uoe() { return new UnsupportedOperationException(); }
 
+    @jdk.internal.vm.annotation.Preserve
     static abstract class AbstractImmutableCollection<E> extends AbstractCollection<E> {
         // all mutating methods throw UnsupportedOperationException
         @Override public boolean add(E e) { throw uoe(); }
@@ -99,6 +101,7 @@ class ImmutableCollections {
         return (List<E>) ListN.EMPTY_LIST;
     }
 
+    @jdk.internal.vm.annotation.Preserve
     static abstract class AbstractImmutableList<E> extends AbstractImmutableCollection<E>
             implements List<E>, RandomAccess {
 
@@ -407,6 +410,7 @@ class ImmutableCollections {
 
     }
 
+    @jdk.internal.vm.annotation.Preserve
     static final class ListN<E> extends AbstractImmutableList<E>
             implements Serializable {
 
@@ -414,7 +418,12 @@ class ImmutableCollections {
         static @Stable List<?> EMPTY_LIST;
 
         static {
-            VM.initializeFromArchive(ListN.class);
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields.
+            //
+            //VM.initializeFromArchive(ListN.class);
             if (EMPTY_LIST == null) {
                 EMPTY_LIST = new ListN<>();
             }
@@ -492,6 +501,7 @@ class ImmutableCollections {
         return (Set<E>) SetN.EMPTY_SET;
     }
 
+    @jdk.internal.vm.annotation.Preserve
     static final class Set12<E> extends AbstractImmutableSet<E>
             implements Serializable {
 
@@ -573,6 +583,7 @@ class ImmutableCollections {
      * least one null is always present.
      * @param <E> the element type
      */
+    @jdk.internal.vm.annotation.Preserve
     static final class SetN<E> extends AbstractImmutableSet<E>
             implements Serializable {
 
@@ -580,7 +591,12 @@ class ImmutableCollections {
         static @Stable Set<?> EMPTY_SET;
 
         static {
-            VM.initializeFromArchive(SetN.class);
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields.
+            //
+            //VM.initializeFromArchive(SetN.class);
             if (EMPTY_SET == null) {
                 EMPTY_SET = new SetN<>();
             }
@@ -792,13 +808,19 @@ class ImmutableCollections {
      * @param <K> the key type
      * @param <V> the value type
      */
+    @jdk.internal.vm.annotation.Preserve
     static final class MapN<K,V> extends AbstractImmutableMap<K,V> {
 
         // EMPTY_MAP may be initialized from the CDS archive.
         static @Stable Map<?,?> EMPTY_MAP;
 
         static {
-            VM.initializeFromArchive(MapN.class);
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields.
+            //
+            //VM.initializeFromArchive(MapN.class);
             if (EMPTY_MAP == null) {
                 EMPTY_MAP = new MapN<>();
             }

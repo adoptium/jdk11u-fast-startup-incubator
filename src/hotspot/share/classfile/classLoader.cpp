@@ -1617,11 +1617,18 @@ void ClassLoader::record_result(InstanceKlass* ik, const ClassFileStream* stream
       }
     }
 
-    // No path entry found for this class. Must be a shared class loaded by the
-    // user defined classloader.
+    // No path entry found for this class. It could be a shared class loaded by
+    // the user defined classloader. Or it could be a klass with no file-backed
+    // ClassFileStream source (VM defined classes), in which case the
+    // shared_classpath_index is -1.
     if (classpath_index < 0) {
       assert(ik->shared_classpath_index() < 0, "Sanity");
-      return;
+      if (ik->shared_classpath_index() == -1) {
+        // This is a class with no file-backed ClassFileStream source.
+        classpath_index = 0;
+      } else {
+        return;
+      }
     }
   } else {
     // The shared path table is set up after module system initialization.
