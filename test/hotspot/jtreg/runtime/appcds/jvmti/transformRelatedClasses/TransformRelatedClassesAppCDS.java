@@ -180,8 +180,7 @@ public class TransformRelatedClassesAppCDS extends TransformRelatedClasses {
                                      String agentJar, String customJar)
         throws Exception {
 
-        OutputAnalyzer out = TestCommon.dump(appJar, classList,
-                                             "-XX:DumpWithParallelism=1");
+        OutputAnalyzer out = TestCommon.dump(appJar, classList);
         TestCommon.checkDump(out);
 
         String agentParam = "-javaagent:" + agentJar + "=" +

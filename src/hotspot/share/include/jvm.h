@@ -72,6 +72,9 @@ JVM_GetInterfaceVersion(void);
 JNIEXPORT void JNICALL
 JVM_PreprocessClassAtDumpTime(JNIEnv *env, jclass k);
 
+JNIEXPORT void JNICALL
+JVM_PreprocessClassWithSourceAtDumpTime(JNIEnv *env, jstring class_name, jstring source, jint interf_cnt);
+
 /*************************************************************************
  PART 1: Functions for Native Libraries
  ************************************************************************/

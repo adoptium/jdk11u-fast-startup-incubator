@@ -34,3 +34,11 @@ Java_jdk_internal_vm_CDSParallelPreProcessor_preProcessClass(
 {
     return JVM_PreprocessClassAtDumpTime(env, k);
 }
+
+
+JNIEXPORT void JNICALL
+Java_jdk_internal_vm_CDSParallelPreProcessor_preProcessClassWithSource(
+    JNIEnv *env, jclass klass, jstring class_name, jstring source, jint interf_cnt)
+{
+    return JVM_PreprocessClassWithSourceAtDumpTime(env, class_name, source, interf_cnt);
+}

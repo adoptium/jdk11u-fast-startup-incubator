@@ -67,8 +67,7 @@ public class UnloadUnregisteredLoaderTest {
         OutputAnalyzer output;
         TestCommon.testDump(classpath, classlist,
                             // command-line arguments ...
-                            use_whitebox_jar,
-                            "-XX:DumpWithParallelism=1");
+                            use_whitebox_jar);
 
         output = TestCommon.exec(classpath,
                                  // command-line arguments ...
