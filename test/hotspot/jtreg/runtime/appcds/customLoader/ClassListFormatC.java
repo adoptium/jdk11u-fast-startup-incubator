@@ -24,7 +24,7 @@
 
 /*
  * @test
- * @summary Tests the format checking of hotspot/src/closed/share/vm/classfile/classListParser.cpp.
+ * @summary Tests the format checking
  *
  * @requires vm.cds
  * @requires vm.cds.custom.loaders

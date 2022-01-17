@@ -24,7 +24,6 @@
 
 #include "precompiled.hpp"
 #include "jvm.h"
-#include "classfile/classListParser.hpp"
 #include "classfile/classLoaderExt.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/loaderConstraints.hpp"
@@ -496,9 +495,9 @@ static void collect_array_classes(Klass* k) {
 }
 
 class CollectClassesClosure : public KlassClosure {
-  size_t instance_klass_count = 0;
-  size_t obj_array_count = 0;
-  size_t type_array_count = 0;
+  size_t _instance_klass_count;
+  size_t _obj_array_count;
+  size_t _type_array_count;
 
   void do_klass(Klass* k) {
     assert(!MetaspaceShared::is_in_parallel_phase(),
@@ -510,14 +509,14 @@ class CollectClassesClosure : public KlassClosure {
       } else {
         _global_klass_objects->append_if_missing(k);
         if (k->is_instance_klass()) {
-          instance_klass_count ++;
+          _instance_klass_count ++;
         } else {
           assert(k->is_array_klass(), "must be");
           if (k->is_objArray_klass()) {
-            obj_array_count ++;
+            _obj_array_count ++;
           } else {
             assert(k->is_typeArray_klass(), "sanity");
-            type_array_count ++;
+            _type_array_count ++;
           }
 
           // Add in the higher dimension array classes too
@@ -531,9 +530,10 @@ class CollectClassesClosure : public KlassClosure {
   }
 
  public:
-  size_t num_instance_klass() { return instance_klass_count; }
-  size_t num_obj_array()      { return obj_array_count; }
-  size_t num_type_array()     { return type_array_count; }
+  CollectClassesClosure() : _instance_klass_count(0), _obj_array_count(0), _type_array_count(0) {}
+  size_t num_instance_klass() { return _instance_klass_count; }
+  size_t num_obj_array()      { return _obj_array_count; }
+  size_t num_type_array()     { return _type_array_count; }
 };
 
 // Use 200,000 as the initial size for _global_klass_objects to
@@ -548,11 +548,11 @@ void MetaspaceShared::collect_archivable_classes() {
 
   tty->print_cr("Number of classes %d", _global_klass_objects->length());
   {
-    tty->print_cr("    instance classes   = %5d",
+    tty->print_cr("    instance classes   = %5zu",
                   collect_classes_closure.num_instance_klass());
-    tty->print_cr("    obj array classes  = %5d",
+    tty->print_cr("    obj array classes  = %5zu",
                   collect_classes_closure.num_obj_array());
-    tty->print_cr("    type array classes = %5d",
+    tty->print_cr("    type array classes = %5zu",
                   collect_classes_closure.num_type_array());
   }
 }
@@ -1837,68 +1837,27 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
   // parallel phase. The parallel operations do not handle the experimental
   // support for 'source:' in the classlist. All JDK and application classes
   // loaded by the builtin class loaders do not use 'source:' in the classlist.
-  if (DumpWithParallelism > 1) {
-    _is_in_parallel_phase = true;
-    Handle classlist_path_str = java_lang_String::create_from_str(
-                                  class_list_path, CHECK_0);
-    Klass* CDSPreprocessor_k = SystemDictionary::resolve_or_fail(
-      vmSymbols::jdk_internal_vm_CDSParallelPreProcessor(), true, CHECK_0);
-    JavaValue result(T_INT);
-    JavaCallArguments args;
-    args.push_oop(classlist_path_str);
-    args.push_int(DumpWithParallelism);
-    JavaCalls::call_static(&result,
-                           CDSPreprocessor_k,
-                           vmSymbols::preLoadAndProcess_name(),
-                           vmSymbols::preLoadAndProcess_method_signature(),
-                           &args,
-                           THREAD);
-    class_count = result.get_jint();
-    if (HAS_PENDING_EXCEPTION) {
-      vm_exit_during_initialization("Loading classlist failed");
-    }
-
-    _is_in_parallel_phase = false;
-  } else {
-    // Google:
-    // Load classes in the old fashioned way within a single thread. This
-    // block of code is kept for the experimental support for 'source:'
-    // in classlist, which is checked by some the CDS tests. The cleanup of the
-    // experimental support should be done in upstream directly, then the
-    // else block can be removed.
-    ClassListParser parser(class_list_path);
-
-    while (parser.parse_one_line()) {
-      Klass* klass = ClassLoaderExt::load_one_class(&parser, THREAD);
-      if (HAS_PENDING_EXCEPTION) {
-        if (klass == NULL &&
-             (PENDING_EXCEPTION->klass()->name() == vmSymbols::java_lang_ClassNotFoundException())) {
-          // print a warning only when the pending exception is class not found
-          tty->print_cr("Preload Warning: Cannot find %s", parser.current_class_name());
-        }
-        CLEAR_PENDING_EXCEPTION;
-      }
-      if (klass != NULL) {
-        if (log_is_enabled(Trace, cds)) {
-          ResourceMark rm;
-          log_trace(cds)("Shared spaces preloaded: %s", klass->external_name());
-        }
-
-        if (klass->is_instance_klass()) {
-          InstanceKlass* ik = InstanceKlass::cast(klass);
-
-          // Link the class to cause the bytecodes to be rewritten and the
-          // cpcache to be created. The linking is done as soon as classes
-          // are loaded in order that the related data structures (klass and
-          // cpCache) are located together.
-          try_link_class(ik, THREAD);
-          guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
-        }
-
-        class_count++;
-      }
-    }
+  _is_in_parallel_phase = true;
+  Handle classlist_path_str = java_lang_String::create_from_str(
+                                class_list_path, CHECK_0);
+  Klass* CDSPreprocessor_k = SystemDictionary::resolve_or_fail(
+    vmSymbols::jdk_internal_vm_CDSParallelPreProcessor(), true, CHECK_0);
+  JavaValue result(T_INT);
+  JavaCallArguments args;
+  args.push_oop(classlist_path_str);
+  args.push_int(DumpWithParallelism);
+  JavaCalls::call_static(&result,
+                          CDSPreprocessor_k,
+                          vmSymbols::preLoadAndProcess_name(),
+                          vmSymbols::preLoadAndProcess_method_signature(),
+                          &args,
+                          THREAD);
+  class_count = result.get_jint();
+  if (HAS_PENDING_EXCEPTION) {
+    vm_exit_during_initialization("Loading classlist failed");
   }
+
+  _is_in_parallel_phase = false;
   return class_count;
 }
 

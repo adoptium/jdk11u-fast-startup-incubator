@@ -26,6 +26,7 @@
 #include "jvm.h"
 #include "classfile/classFileStream.hpp"
 #include "classfile/classLoader.hpp"
+#include "classfile/classLoaderExt.hpp"
 #include "classfile/classLoaderData.inline.hpp"
 #include "classfile/javaAssertions.hpp"
 #include "classfile/javaClasses.inline.hpp"
@@ -604,6 +605,29 @@ JVM_ENTRY(void, JVM_PreprocessClassAtDumpTime(JNIEnv *env, jclass k))
   assert(k_oop != NULL, "sanity");
   Klass* k_k = java_lang_Class::as_Klass(k_oop);
   MetaspaceShared::preprocess_for_dumping_during_parallel_phase(k_k, THREAD);
+JVM_END
+
+
+JVM_ENTRY(void, JVM_PreprocessClassWithSourceAtDumpTime(JNIEnv *env, jstring class_name, jstring source, jint interf_cnt))
+  ResourceMark rm(THREAD);
+
+  Handle h_source (THREAD, JNIHandles::resolve_non_null(source));
+  Symbol* class_name_sym = java_lang_String::as_symbol(JNIHandles::resolve_non_null(class_name), THREAD);
+  char* source_path = java_lang_String::as_utf8_string(h_source());
+  InstanceKlass* k = ClassLoaderExt::load_class(class_name_sym, source_path, THREAD);
+  if (k != NULL) {
+    if (k->local_interfaces()->length() != interf_cnt) {
+      THROW_MSG(vmSymbols::java_lang_InternalError(), err_msg("The number of interfaces (%d) specified in class list does not match the class file (%d)",
+                     interf_cnt, k->local_interfaces()->length()));
+    }
+    if (!SystemDictionaryShared::add_non_builtin_klass(class_name_sym, ClassLoaderData::the_null_class_loader_data(),
+                                                       k, THREAD)) {
+      THROW_MSG(vmSymbols::java_lang_InternalError(), err_msg("Duplicated calss %s", class_name_sym->as_C_string()));
+    }
+    // This tells JVM_FindLoadedClass to not find this class.
+    k->set_shared_classpath_index(UNREGISTERED_INDEX);
+    k->clear_class_loader_type();
+  }
 JVM_END
 
 // java.lang.Object ///////////////////////////////////////////////

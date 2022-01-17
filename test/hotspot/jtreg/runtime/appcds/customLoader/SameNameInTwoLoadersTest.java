@@ -68,7 +68,7 @@ public class SameNameInTwoLoadersTest {
         String testClass, String testCaseId) throws Exception {
         classlist[0] = testClass;
 
-        TestCommon.testDump(appJar, classlist, "-XX:DumpWithParallelism=1", useWbParam);
+        TestCommon.testDump(appJar, classlist, useWbParam);
 
         OutputAnalyzer output = TestCommon.exec(appJar,
                                  // command-line arguments ...

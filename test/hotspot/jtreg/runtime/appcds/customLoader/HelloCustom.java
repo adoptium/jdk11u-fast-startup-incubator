@@ -60,7 +60,6 @@ public class HelloCustom {
         OutputAnalyzer output;
         TestCommon.testDump(appJar, classlist,
                             // command-line arguments ...
-                            "-XX:DumpWithParallelism=1",
                             use_whitebox_jar);
 
         output = TestCommon.exec(appJar,

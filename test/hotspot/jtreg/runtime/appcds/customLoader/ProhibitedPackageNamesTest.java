@@ -53,6 +53,6 @@ public class ProhibitedPackageNamesTest extends ClassListFormatBase {
                 // Without "loader:" keyword.
                 "java/InProhibitedPkg id: 2 super: 1 source: " + customJarPath
             ),
-            "Prohibited package for non-bootstrap classes: java/InProhibitedPkg.class");
+            "Prohibited package for non-bootstrap classes: java.InProhibitedPkg");
     }
 }

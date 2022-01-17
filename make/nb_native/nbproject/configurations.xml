@@ -1512,8 +1512,6 @@
               <in>classFileParser.hpp</in>
               <in>classFileStream.cpp</in>
               <in>classFileStream.hpp</in>
-              <in>classListParser.cpp</in>
-              <in>classListParser.hpp</in>
               <in>classLoader.cpp</in>
               <in>classLoader.hpp</in>
               <in>classLoaderData.cpp</in>
@@ -8755,16 +8753,6 @@
             flavor2="0">
       </item>
       <item path="../../src/hotspot/share/classfile/classFileStream.hpp"
-            ex="false"
-            tool="3"
-            flavor2="0">
-      </item>
-      <item path="../../src/hotspot/share/classfile/classListParser.cpp"
-            ex="false"
-            tool="1"
-            flavor2="0">
-      </item>
-      <item path="../../src/hotspot/share/classfile/classListParser.hpp"
             ex="false"
             tool="3"
             flavor2="0">
@@ -22532,16 +22520,6 @@
             flavor2="0">
       </item>
       <item path="../../src/hotspot/share/classfile/classFileStream.hpp"
-            ex="false"
-            tool="3"
-            flavor2="0">
-      </item>
-      <item path="../../src/hotspot/share/classfile/classListParser.cpp"
-            ex="false"
-            tool="1"
-            flavor2="0">
-      </item>
-      <item path="../../src/hotspot/share/classfile/classListParser.hpp"
             ex="false"
             tool="3"
             flavor2="0">

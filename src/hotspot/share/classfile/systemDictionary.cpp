@@ -338,17 +338,6 @@ Klass* SystemDictionary::resolve_super_or_fail(Symbol* child_name,
                                                  Handle protection_domain,
                                                  bool is_superclass,
                                                  TRAPS) {
-#if INCLUDE_CDS
-  if (DumpSharedSpaces) {
-    // Special processing for CDS dump time.
-    Klass* k = SystemDictionaryShared::dump_time_resolve_super_or_fail(child_name,
-        class_name, class_loader, protection_domain, is_superclass, CHECK_NULL);
-    if (k) {
-      return k;
-    }
-  }
-#endif // INCLUDE_CDS
-
   // Double-check, if child class is already loaded, just return super-class,interface
   // Don't add a placedholder if already loaded, i.e. already in appropriate class loader
   // dictionary.

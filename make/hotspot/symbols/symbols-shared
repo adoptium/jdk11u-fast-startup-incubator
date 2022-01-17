@@ -35,3 +35,4 @@ JVM_GetVersionInfo
 JVM_InitAgentProperties
 
 JVM_PreprocessClassAtDumpTime
+JVM_PreprocessClassWithSourceAtDumpTime

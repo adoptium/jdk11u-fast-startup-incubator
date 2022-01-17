@@ -49,7 +49,7 @@ public class ProtectionDomain {
             "ProtDomainClassForArchive id: 3 super: 1 source: " + customJar
         };
 
-        TestCommon.testDump(appJar, classlist, "-XX:DumpWithParallelism=1");
+        TestCommon.testDump(appJar, classlist);
 
         // First class is loaded from CDS, second class is loaded from JAR
         TestCommon.checkExec(TestCommon.exec(appJar, "-verbose:class", "ProtDomain", customJar),

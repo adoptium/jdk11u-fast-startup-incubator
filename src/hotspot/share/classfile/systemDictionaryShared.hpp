@@ -317,12 +317,6 @@ public:
 
   static bool add_non_builtin_klass(Symbol* class_name, ClassLoaderData* loader_data,
                                     InstanceKlass* k, TRAPS);
-  static Klass* dump_time_resolve_super_or_fail(Symbol* child_name,
-                                                Symbol* class_name,
-                                                Handle class_loader,
-                                                Handle protection_domain,
-                                                bool is_superclass,
-                                                TRAPS);
 
   static size_t dictionary_entry_size() {
     return (DumpSharedSpaces) ? sizeof(SharedDictionaryEntry) : sizeof(DictionaryEntry);
