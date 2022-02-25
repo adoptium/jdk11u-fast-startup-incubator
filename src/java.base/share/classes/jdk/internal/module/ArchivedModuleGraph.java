@@ -33,6 +33,7 @@ import jdk.internal.misc.VM;
 /**
  * Used by ModuleBootstrap to obtain the archived system modules and finder.
  */
+@jdk.internal.vm.annotation.Preserve
 final class ArchivedModuleGraph {
     private static String archivedMainModule;
     private static SystemModules archivedSystemModules;
@@ -92,6 +93,13 @@ final class ArchivedModuleGraph {
     }
 
     static {
-        VM.initializeFromArchive(ArchivedModuleGraph.class);
+        // GOOGLE: With the general support for class and static field
+        //         pre-initialization, it no longer needs to call
+        //         VM.initializeFromArchive() explicitly at runtime to
+        //         load the archived value for fields annotated with
+        //         @Preserve. That allows application classes to take
+        //         advantage of the pre-initialization feature.
+        //
+        //VM.initializeFromArchive(ArchivedModuleGraph.class);
     }
 }

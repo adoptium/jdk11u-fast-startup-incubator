@@ -31,6 +31,7 @@ package java.nio.file;
  * @since 1.7
  */
 
+@jdk.internal.vm.annotation.Preserve
 public enum StandardOpenOption implements OpenOption {
     /**
      * Open for read access.

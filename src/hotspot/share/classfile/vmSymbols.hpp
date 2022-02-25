@@ -61,6 +61,7 @@
   template(java_lang_String,                          "java/lang/String")                         \
   template(java_lang_StringLatin1,                    "java/lang/StringLatin1")                   \
   template(java_lang_StringUTF16,                     "java/lang/StringUTF16")                    \
+  template(java_lang_Runnable,                        "java/lang/Runnable")                       \
   template(java_lang_Thread,                          "java/lang/Thread")                         \
   template(java_lang_ThreadGroup,                     "java/lang/ThreadGroup")                    \
   template(java_lang_Cloneable,                       "java/lang/Cloneable")                      \
@@ -662,6 +663,10 @@
   template(toFileURL_name,                         "toFileURL")                                                   \
   template(toFileURL_signature,                    "(Ljava/lang/String;)Ljava/net/URL;")                          \
   template(url_void_signature,                     "(Ljava/net/URL;)V")                                           \
+                                                                                                                  \
+  /* pre-initialization */                                                                                        \
+  template(com_google_common_annotations_Preserve_signature,  "Lcom/google/common/annotations/Preserve;")  \
+  template(jdk_internal_vm_annotation_Preserve_signature,     "Ljdk/internal/vm/annotation/Preserve;")            \
                                                                                                                   \
   /*end*/
 

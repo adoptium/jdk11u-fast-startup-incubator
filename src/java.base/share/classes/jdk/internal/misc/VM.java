@@ -29,6 +29,7 @@ import static java.lang.Thread.State.*;
 import java.util.Map;
 import java.util.Properties;
 
+@jdk.internal.vm.annotation.Preserve(false)
 public class VM {
 
     // the init level when the VM is fully initialized

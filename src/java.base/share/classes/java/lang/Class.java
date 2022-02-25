@@ -2899,6 +2899,7 @@ public final class Class<T> implements java.io.Serializable,
     /**
      * Atomic operations support.
      */
+    @jdk.internal.vm.annotation.Preserve
     private static class Atomic {
         // initialize Unsafe machinery here, since we need to call Class.class instance method
         // and have to avoid calling it in the static initializer of the Class class...
@@ -2938,6 +2939,7 @@ public final class Class<T> implements java.io.Serializable,
 
     // Reflection data caches various derived names and reflective members. Cached
     // values may be invalidated when JVM TI RedefineClasses() is called
+    @jdk.internal.vm.annotation.Preserve
     private static class ReflectionData<T> {
         volatile Field[] declaredFields;
         volatile Field[] publicFields;

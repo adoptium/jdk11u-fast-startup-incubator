@@ -317,6 +317,19 @@ class Universe: AllStatic {
     assert((uint)t < T_VOID+1, "range check");
     return check_mirror(_mirrors[t]);
   }
+
+  static bool is_basic_type_mirror(oop m) {
+    return (m == _mirrors[T_INT] ||
+            m == _mirrors[T_FLOAT] ||
+            m == _mirrors[T_DOUBLE] ||
+            m == _mirrors[T_BYTE] ||
+            m == _mirrors[T_BOOLEAN] ||
+            m == _mirrors[T_CHAR] ||
+            m == _mirrors[T_LONG] ||
+            m == _mirrors[T_SHORT] ||
+            m == _mirrors[T_VOID]);
+  }
+
   static oop      main_thread_group()                 { return _main_thread_group; }
   static void set_main_thread_group(oop group)        { _main_thread_group = group;}
 

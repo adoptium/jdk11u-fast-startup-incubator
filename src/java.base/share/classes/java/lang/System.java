@@ -89,6 +89,7 @@ import sun.security.util.SecurityConstants;
  *
  * @since   1.0
  */
+@jdk.internal.vm.annotation.Preserve(false)
 public final class System {
     /* Register the natives via the static initializer.
      *

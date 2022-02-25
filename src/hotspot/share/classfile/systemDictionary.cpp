@@ -1026,7 +1026,7 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
     }
 
     // If it's anonymous, initialize it now, since nobody else will.
-    k->eager_initialize(CHECK_NULL);
+    k->eager_initialize(loader_data, CHECK_NULL);
 
     // notify jvmti
     if (JvmtiExport::should_post_class_load()) {
@@ -1624,7 +1624,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
     update_dictionary(d_hash, p_index, p_hash,
                       k, class_loader_h, THREAD);
   }
-  k->eager_initialize(THREAD);
+  k->eager_initialize(loader_data, THREAD);
 
   // notify jvmti
   if (JvmtiExport::should_post_class_load()) {
@@ -1916,7 +1916,8 @@ void SystemDictionary::methods_do(void f(Method*)) {
 class RemoveClassesClosure : public CLDClosure {
   public:
     void do_cld(ClassLoaderData* cld) {
-      if (cld->is_system_class_loader_data() || cld->is_platform_class_loader_data()) {
+      if (cld->dictionary() != NULL &&
+          cld->is_system_class_loader_data() || cld->is_platform_class_loader_data()) {
         cld->dictionary()->remove_classes_in_error_state();
       }
     }

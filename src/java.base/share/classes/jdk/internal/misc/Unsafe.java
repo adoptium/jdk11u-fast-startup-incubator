@@ -51,15 +51,21 @@ import java.security.ProtectionDomain;
  */
 
 public final class Unsafe {
+    @jdk.internal.vm.annotation.Stable
+    @jdk.internal.vm.annotation.Preserve
+    private static Unsafe theUnsafe;
 
     private static native void registerNatives();
     static {
         registerNatives();
+
+        // Load and use the archived value if it exists
+        if (theUnsafe == null) {
+            theUnsafe = new Unsafe();
+        }
     }
 
     private Unsafe() {}
-
-    private static final Unsafe theUnsafe = new Unsafe();
 
     /**
      * Provides the caller with the capability of performing unsafe

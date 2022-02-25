@@ -248,6 +248,14 @@ public:
     oop obj = RawAccess<>::oop_load(p);
 
     if (_hr->is_open_archive()) {
+      if (log_is_enabled(Debug, cds, heap)) {
+        ResourceMark rm;
+        log_debug(cds, heap)("Verifying " PTR_FORMAT " -> " PTR_FORMAT,
+                             p2i(p), p2i(obj));
+        LogTarget(Debug, cds, heap) log;
+        LogStream out(log);
+        obj->print_on(&out);
+      }
       guarantee(obj == NULL || G1ArchiveAllocator::is_archived_object(obj),
                 "Archive object at " PTR_FORMAT " references a non-archive object at " PTR_FORMAT,
                 p2i(p), p2i(obj));

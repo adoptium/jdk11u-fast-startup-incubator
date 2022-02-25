@@ -178,8 +178,12 @@ private:
   // Flags of the current shared class.
   volatile u2     _shared_class_flags;
 
-  // The _has_raw_archived_mirror and _has_signer_and_not_archived flags are
-  // set during non-parallel phase at dump time.
+  // Flags set during non-parallel phase at dump time:
+  // - _has_raw_archived_mirror
+  // - _has_signer_and_not_archived
+  // - _can_preserve
+  // - _is_pre_initialized_without_dependency_class
+  // - _is_pre_initialized_with_dependency_class
   //
   // The _is_in_error_state_and_not_archived and _done_nofast_bycode_rewriting
   // flags may be set during both parallel and non-parallel phases at dump
@@ -189,7 +193,15 @@ private:
     _has_signer_and_not_archived = 1 << 2,
     _is_in_error_state_and_not_archived = 1 << 3,
     _done_nofast_bycode_rewriting = 1 << 4,
+    _can_preserve = 1 << 5,
+    _is_pre_initialized_without_dependency_class = 1 << 6,
+    _is_pre_initialized_with_dependency_class = 1 << 7,
   };
+
+#define PRE_INIT_FLAGS_MASK \
+  (_is_pre_initialized_without_dependency_class | \
+   _is_pre_initialized_with_dependency_class)
+
 #endif
   // The _archived_mirror is set at CDS dump time pointing to the cached mirror
   // in the open archive heap region when archiving java object is supported.
@@ -407,6 +419,37 @@ protected:
   bool is_in_error_state_and_not_archived() {
     assert(DumpSharedSpaces, "dump time only");
     return (shared_class_flags() & _is_in_error_state_and_not_archived) != 0;
+  }
+
+  // Used during non-parallel phase.
+  bool can_preserve() const {
+    return (_shared_class_flags & _can_preserve) != 0;
+  }
+  void set_can_preserve() {
+    _shared_class_flags |= _can_preserve;
+  }
+  void clear_can_preserve() {
+    _shared_class_flags &= ~_can_preserve;
+  }
+  bool is_pre_initialized_without_dependency_class() const          {
+    return (_shared_class_flags &
+            _is_pre_initialized_without_dependency_class) != 0;
+  }
+  void set_is_pre_initialized_without_dependency_class() {
+    _shared_class_flags |= _is_pre_initialized_without_dependency_class; }
+  bool is_pre_initialized_with_dependency_class() const {
+    return (_shared_class_flags &
+            _is_pre_initialized_with_dependency_class) != 0;
+  }
+  void set_is_pre_initialized_with_dependency_class() {
+    _shared_class_flags |= _is_pre_initialized_with_dependency_class;
+  }
+
+  bool has_pre_initialized_flag() {
+    assert((_shared_class_flags & PRE_INIT_FLAGS_MASK) !=
+           PRE_INIT_FLAGS_MASK,
+           "incorrect is_pre_initialized state, both flags are set");
+    return (_shared_class_flags & PRE_INIT_FLAGS_MASK) != 0;
   }
 #endif // INCLUDE_CDS
 

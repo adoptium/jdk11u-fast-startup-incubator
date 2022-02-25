@@ -56,6 +56,7 @@ import static java.lang.String.UTF16;
  * @author  Joseph D. Darcy
  * @since 1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Integer extends Number implements Comparable<Integer> {
     /**
      * A constant holding the minimum value an {@code int} can
@@ -1004,6 +1005,7 @@ public final class Integer extends Number implements Comparable<Integer> {
         static final int low = -128;
         static final int high;
         static final Integer[] cache;
+        @jdk.internal.vm.annotation.Preserve
         static Integer[] archivedCache;
 
         static {
@@ -1022,8 +1024,15 @@ public final class Integer extends Number implements Comparable<Integer> {
             }
             high = h;
 
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields annotated with
+            //         @Preserve. That allows application classes to take
+            //         advantage of the pre-initialization feature.
+            //
             // Load IntegerCache.archivedCache from archive, if possible
-            VM.initializeFromArchive(IntegerCache.class);
+            //VM.initializeFromArchive(IntegerCache.class);
             int size = (high - low) + 1;
 
             // Use the archived cache if it exists and is large enough

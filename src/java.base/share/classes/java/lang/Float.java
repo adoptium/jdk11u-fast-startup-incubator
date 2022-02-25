@@ -45,6 +45,7 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * @author  Joseph D. Darcy
  * @since 1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Float extends Number implements Comparable<Float> {
     /**
      * A constant holding the positive infinity of type

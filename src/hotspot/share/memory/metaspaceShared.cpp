@@ -480,6 +480,8 @@ address MetaspaceShared::cds_i2i_entry_code_buffers(size_t total_size) {
 // is run at a safepoint just before exit, this is the entire set of classes.
 static GrowableArray<Klass*>* _global_klass_objects;
 
+// During relocation, ArchiveCompactor::iterate_roots updates the table with
+// relocated Klass*.
 GrowableArray<Klass*>* MetaspaceShared::collected_klasses() {
   return _global_klass_objects;
 }
@@ -511,6 +513,9 @@ class CollectClassesClosure : public KlassClosure {
         _global_klass_objects->append_if_missing(k);
         if (k->is_instance_klass()) {
           instance_klass_count ++;
+          if (k->can_preserve()) {
+            HeapShared::add_preservable_class(InstanceKlass::cast(k));
+          }
         } else {
           assert(k->is_array_klass(), "must be");
           if (k->is_objArray_klass()) {
@@ -555,6 +560,12 @@ void MetaspaceShared::collect_archivable_classes() {
     tty->print_cr("    type array classes = %5d",
                   collect_classes_closure.num_type_array());
   }
+}
+
+void fix_shared_classpath_index(Klass* k) {
+  assert(k->shared_classpath_index() == -1,
+         "shared_classpath_index is already set");
+  k->set_shared_classpath_index(0);
 }
 
 static void remove_unshareable_in_classes() {
@@ -1615,11 +1626,12 @@ Klass* MetaspaceShared::get_relocated_klass(Klass *k) {
   return ArchiveCompactor::get_relocated_klass(k);
 }
 
-class LinkSharedClassesClosure : public KlassClosure {
+class LinkAndInitSharedClassesClosure : public KlassClosure {
   Thread* THREAD;
   bool    _made_progress;
  public:
-  LinkSharedClassesClosure(Thread* thread) : THREAD(thread), _made_progress(false) {}
+  LinkAndInitSharedClassesClosure(Thread* thread) : THREAD(thread),
+                                                    _made_progress(false) {}
 
   void reset()               { _made_progress = false; }
   bool made_progress() const { return _made_progress; }
@@ -1627,11 +1639,20 @@ class LinkSharedClassesClosure : public KlassClosure {
   void do_klass(Klass* k) {
     if (k->is_instance_klass()) {
       InstanceKlass* ik = InstanceKlass::cast(k);
+      if (ik->is_anonymous()) {
+        return;
+      }
       // Link the class to cause the bytecodes to be rewritten and the
       // cpcache to be created. Class verification is done according
       // to -Xverify setting.
       _made_progress |= MetaspaceShared::try_link_class(ik, THREAD);
       guarantee(!HAS_PENDING_EXCEPTION, "exception in link_class");
+
+      // Initialize the class if it is annotated with @Preserve.
+      // HeapShared::initialize_preservable_klass clears the _can_preserve
+      // flag from the shared class' _shared_class_flags if there is any
+      // exceptions during initialization.
+      HeapShared::initialize_preservable_klass(ik, THREAD);
     }
   }
 };
@@ -1666,7 +1687,7 @@ void MetaspaceShared::link_and_cleanup_shared_classes(TRAPS) {
 
   // We need to iterate because verification may cause additional classes
   // to be loaded.
-  LinkSharedClassesClosure link_closure(THREAD);
+  LinkAndInitSharedClassesClosure link_closure(THREAD);
   do {
     link_closure.reset();
     ClassLoaderDataGraph::loaded_classes_do(&link_closure);
@@ -1787,7 +1808,7 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     }
     tty->print_cr("Reading extra data: done.");
 
-    HeapShared::init_subgraph_entry_fields(THREAD);
+    HeapShared::initialize_subgraph_entry_fields(THREAD);
 
     // Rewrite and link classes
     tty->print_cr("Rewriting and linking classes ...");
@@ -1798,6 +1819,8 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     // are implemented by K are not verified.
     link_and_cleanup_shared_classes(CATCH);
     tty->print_cr("Rewriting and linking classes: done");
+
+    Universe::basic_type_classes_do(&fix_shared_classpath_index);
 
     // At this point, all classes have been loaded.
     // Gather systemDictionary classes in a global array and do everything to
@@ -1828,7 +1851,7 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
 int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
   int class_count = 0;
 
-  // Google:
+  // GOOGLE:
   //
   // If DumpWithParallelism is >1, load and preprocess classes in parallel.
   // Otherwise, load classes in the old fashioned way within a single thread.
@@ -1860,7 +1883,7 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
 
     _is_in_parallel_phase = false;
   } else {
-    // Google:
+    // GOOGLE:
     // Load classes in the old fashioned way within a single thread. This
     // block of code is kept for the experimental support for 'source:'
     // in classlist, which is checked by some the CDS tests. The cleanup of the

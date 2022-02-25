@@ -46,6 +46,7 @@ import jdk.internal.HotSpotIntrinsicCandidate;
  * @author  Joseph D. Darcy
  * @since 1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Double extends Number implements Comparable<Double> {
     /**
      * A constant holding the positive infinity of type

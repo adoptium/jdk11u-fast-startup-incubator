@@ -43,6 +43,7 @@ import jdk.internal.misc.VM;
  * @see     java.lang.Number
  * @since   1.1
  */
+@jdk.internal.vm.annotation.Preserve
 public final class Short extends Number implements Comparable<Short> {
 
     /**
@@ -203,6 +204,7 @@ public final class Short extends Number implements Comparable<Short> {
         return valueOf(s, 10);
     }
 
+    @jdk.internal.vm.annotation.Preserve
     private static class ShortCache {
         private ShortCache() {}
 
@@ -212,8 +214,15 @@ public final class Short extends Number implements Comparable<Short> {
         static {
             int size = -(-128) + 127 + 1;
 
+            // GOOGLE: With the general support for class and static field
+            //         pre-initialization, it no longer needs to call
+            //         VM.initializeFromArchive() explicitly at runtime to
+            //         load the archived value for fields annotated with
+            //         @Preserve. That allows application classes to take
+            //         advantage of the pre-initialization feature.
+            //
             // Load and use the archived cache if it exists
-            VM.initializeFromArchive(ShortCache.class);
+            //VM.initializeFromArchive(ShortCache.class);
             if (archivedCache == null || archivedCache.length != size) {
                 Short[] c = new Short[size];
                 short value = -128;

@@ -150,6 +150,7 @@ import sun.security.action.GetPropertyAction;
  * @author  James Gosling
  * @since 1.0
  */
+@jdk.internal.vm.annotation.Preserve
 public final class URL implements java.io.Serializable {
 
     static final String BUILTIN_HANDLERS_PREFIX = "sun.net.www.protocol";
@@ -1244,6 +1245,7 @@ public final class URL implements java.io.Serializable {
 
     private static final URLStreamHandlerFactory defaultFactory = new DefaultFactory();
 
+    @jdk.internal.vm.annotation.Preserve
     private static class DefaultFactory implements URLStreamHandlerFactory {
         private static String PREFIX = "sun.net.www.protocol";
 

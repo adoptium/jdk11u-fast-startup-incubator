@@ -46,6 +46,7 @@
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/heapInspection.hpp"
+#include "memory/heapShared.hpp"
 #include "memory/iterator.inline.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/metaspaceClosure.hpp"
@@ -582,7 +583,73 @@ klassItable InstanceKlass::itable() const {
   return klassItable(const_cast<InstanceKlass*>(this));
 }
 
-void InstanceKlass::eager_initialize(Thread *thread) {
+// Handle pre-initialized classes. This is called from
+// InstanceKlass::eager_initialize() immediately after a shared class is
+// loaded and restored from the archive at runtime.
+void InstanceKlass::shared_class_pre_initialize_impl(
+                      ClassLoaderData* loader_data, TRAPS) {
+
+  assert(UseSharedSpaces && is_shared(), "sanity");
+
+  // Classes loaded before java.lang.Class do not have mirrors initially.
+  // Universe::fixup_mirrors() fixup the mirrors for those classes after
+  // java.lang.Class is loaded. Ignore any classes without mirror.
+  if (!HeapShared::open_archive_heap_region_mapped() ||
+      java_mirror() == NULL) {
+    return;
+  }
+
+  if (BytecodeVerificationLocal ||
+      (BytecodeVerificationRemote &&
+       !loader_data->is_the_null_class_loader_data())) {
+    return;
+  }
+
+  // Fast case:
+  // After shared class restoration, an archived class for builtin loader is
+  // in linked state, except
+  // SystemDictionaryShared::check_verification_constraints still needs to
+  // be done. However a class can be set in 'linked' state for the following
+  // cases where SystemDictionaryShared::check_verification_constraints
+  // check is not needed:
+  // - When BytecodeVerificationLocal is false and the current shared class
+  //   is loaded by the NULL loader.
+  // - When BytecodeVerificationRemote is disabled and the current shared
+  //   class is loaded by one of the builtin loaders.
+  {
+    Handle h_init_lock(THREAD, init_lock());
+    ObjectLocker ol(h_init_lock, THREAD, h_init_lock() != NULL);
+    if (!is_linked()) {
+      set_init_state(linked);
+      // Only need to do JvmtiExport::post_class_prepare here for the
+      // fast case here. For slow case, post_class_prepare is done by
+      // link_class_impl.
+      if (JvmtiExport::should_post_class_prepare()) {
+        JvmtiExport::post_class_prepare((JavaThread *)THREAD, this);
+      }
+    }
+  }
+
+  // Set the class state to 'fully_initialized' if it has the
+  // '_is_pre_initialized_without_dependency_class' flag.
+  if (should_be_initialized() &&
+      is_pre_initialized_without_dependency_class()) {
+    set_initialization_state_and_notify(fully_initialized, CHECK);
+    if (log_is_enabled(Info, preinit)) {
+      ResourceMark rm(THREAD);
+      log_info(preinit)(
+        "%s is fully pre_initialized, set state to fully_initialized",
+        external_name());
+    }
+  }
+}
+
+void InstanceKlass::eager_initialize(ClassLoaderData* loader_data,
+                                     Thread *thread) {
+  if (UseSharedSpaces && is_shared()) {
+    shared_class_pre_initialize_impl(loader_data, thread);
+  }
+
   if (!EagerInitialization) return;
 
   if (this->is_not_initialized()) {
@@ -989,18 +1056,20 @@ void InstanceKlass::initialize_impl(TRAPS) {
 
   // Step 8
   {
-    assert(THREAD->is_Java_thread(), "non-JavaThread in initialize_impl");
-    JavaThread* jt = (JavaThread*)THREAD;
-    DTRACE_CLASSINIT_PROBE_WAIT(clinit, -1, wait);
-    // Timer includes any side effects of class initialization (resolution,
-    // etc), but not recursive entry into call_class_initializer().
-    PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),
-                             ClassLoader::perf_class_init_selftime(),
-                             ClassLoader::perf_classes_inited(),
-                             jt->get_thread_stat()->perf_recursion_counts_addr(),
-                             jt->get_thread_stat()->perf_timers_addr(),
-                             PerfClassTraceTime::CLASS_CLINIT);
-    call_class_initializer(THREAD);
+    if (!(is_shared() && HeapShared::initialize_from_archived_subgraph(this))) {
+      assert(THREAD->is_Java_thread(), "non-JavaThread in initialize_impl");
+      JavaThread* jt = (JavaThread*)THREAD;
+      DTRACE_CLASSINIT_PROBE_WAIT(clinit, -1, wait);
+      // Timer includes any side effects of class initialization (resolution,
+      // etc), but not recursive entry into call_class_initializer().
+      PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),
+                               ClassLoader::perf_class_init_selftime(),
+                               ClassLoader::perf_classes_inited(),
+                               jt->get_thread_stat()->perf_recursion_counts_addr(),
+                               jt->get_thread_stat()->perf_timers_addr(),
+                               PerfClassTraceTime::CLASS_CLINIT);
+      call_class_initializer(THREAD);
+    }
   }
 
   // Step 9
@@ -2387,17 +2456,6 @@ void InstanceKlass::restore_unshareable_info(ClassLoaderData* loader_data, Handl
     // Array classes have null protection domain.
     // --> see ArrayKlass::complete_create_array_klass()
     array_klasses()->restore_unshareable_info(ClassLoaderData::the_null_class_loader_data(), Handle(), CHECK);
-  }
-
-  // At the end of restoration, an archived class for builtin loader is in
-  // fully linked state, set the _init_state to 'linked'.
-  //
-  // If verification is disabled (-Xverify:none), no additional loader
-  // constraint check is needed after restoration, in which case all shared
-  // classes are in fully 'linked' state once loaded and restored.
-  if (Verifier::verify_disabled() ||
-      loader_data->is_builtin_class_loader_data()) {
-    _init_state = linked;
   }
 }
 
