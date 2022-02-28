@@ -383,6 +383,7 @@ stringStream::~stringStream() {
 xmlStream*   xtty;
 outputStream* tty;
 CDS_ONLY(fileStream* classlist_file;) // Only dump the classes that can be stored into the CDS archive
+CDS_ONLY(fileStream* preinit_classlist_file;)
 extern Mutex* tty_lock;
 
 #define EXTRACHARLEN   32
@@ -551,8 +552,11 @@ long fileStream::fileSize() {
 
 char* fileStream::readln(char *data, int count ) {
   char * ret = ::fgets(data, count, _file);
-  //Get rid of annoying \n char
-  data[::strlen(data)-1] = '\0';
+  // Get rid of annoying \n char only if it is present.
+  size_t len = ::strlen(data);
+  if (len > 0 && data[len - 1] == '\n') {
+    data[len - 1] = '\0';
+  }
   return ret;
 }
 
@@ -911,6 +915,10 @@ void ostream_init_log() {
     classlist_file = new(ResourceObj::C_HEAP, mtInternal)
                          fileStream(list_name);
     FREE_C_HEAP_ARRAY(char, list_name);
+  }
+  if (PreInitializeArchivedClassList != NULL) {
+    preinit_classlist_file = new(ResourceObj::C_HEAP, mtInternal)
+                                 fileStream(PreInitializeArchivedClassList, "r");
   }
 #endif
 

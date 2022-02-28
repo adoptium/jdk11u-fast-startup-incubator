@@ -2078,6 +2078,13 @@ bool Arguments::check_vm_args_consistency() {
   }
 #endif
 
+#ifdef INCLUDE_CDS
+  if (PreInitializeArchivedClassList && ((!RequireSharedSpaces && !DumpSharedSpaces) || !PreInitializeArchivedClass)) {
+    log_error(cds, heap)("AppCDS is required when using -XX:PreInitializeArchivedClassList option");
+    status = false;
+  }
+#endif
+
   if (!FLAG_IS_DEFAULT(AllocateHeapAt)) {
     if ((UseNUMAInterleaving && !FLAG_IS_DEFAULT(UseNUMAInterleaving)) || (UseNUMA && !FLAG_IS_DEFAULT(UseNUMA))) {
       log_warning(arguments) ("NUMA support for Heap depends on the file system when AllocateHeapAt option is used.\n");

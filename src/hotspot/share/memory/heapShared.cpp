@@ -44,6 +44,7 @@
 #include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/safepointVerifiers.hpp"
 #include "utilities/bitMap.inline.hpp"
+#include "utilities/ostream.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
 #endif
@@ -1104,6 +1105,71 @@ void HeapShared::initialize_subgraph_entry_fields(Thread* THREAD) {
 
   // Initialize classes with any static fields annotated with @Preserve.
   initialize_preservable_static_field_infos(THREAD);
+}
+
+void HeapShared::initialize_preservable_klass_from_list(Thread* THREAD) {
+  // Initialize preservable classes from given class list, the content format
+  // of class list looks as well as DumpLoadedClassList
+  if (!PreInitializeArchivedClassList) {
+    return;
+  }
+  if (!preinit_classlist_file->is_open()) {
+    log_error(preinit)("Can not open extended preservable class list file %s", PreInitializeArchivedClassList);
+    return;
+  }
+  while (!preinit_classlist_file->eof()) {
+    // Max number of bytes allowed per line in the classlist.
+    // Theoretically Java class names could be 65535 bytes in length. Also, an input line
+    // could have a very long path name up to JVM_MAXPATHLEN bytes in length. In reality,
+    // 4K bytes is more than enough.
+    ResourceMark rm;
+    char buf[4096];
+    char* klass_line = preinit_classlist_file->readln(buf, 4096);
+    if (klass_line == NULL) {
+      continue;
+    }
+    if (strlen(buf) > 0) {
+      Symbol* klass_name = SymbolTable::new_symbol(klass_line, THREAD);
+      Klass* k = SystemDictionary::resolve_or_null(klass_name,
+                                   Handle(THREAD, SystemDictionary::java_system_loader()),
+                                   Handle()/*null_protection_domain*/, THREAD);
+      if (k == NULL) {
+        if (HAS_PENDING_EXCEPTION) {
+          CLEAR_PENDING_EXCEPTION;
+#ifndef PRODUCT
+          if (Verbose) {
+            Handle throwable(THREAD, PENDING_EXCEPTION);
+            java_lang_Throwable::print_stack_trace(throwable, tty);
+            tty->cr();
+          }
+#endif
+        }
+        log_warning(preinit)("Failed to preserve klass %s", klass_name->as_C_string());
+        continue;
+      }
+      if (k->is_instance_klass()) {
+        InstanceKlass* ik = InstanceKlass::cast(k);
+        ik->initialize(THREAD);
+        if (HAS_PENDING_EXCEPTION) {
+          CLEAR_PENDING_EXCEPTION;
+#ifndef PRODUCT
+          if (Verbose) {
+            Handle throwable(THREAD, PENDING_EXCEPTION);
+            java_lang_Throwable::print_stack_trace(throwable, tty);
+            tty->cr();
+          }
+#endif
+          log_warning(preinit)("Failed to preserve klass %s", klass_name->as_C_string());
+          continue;
+        } else {
+          assert(!ik->is_not_initialized(), "must be");
+          ik->constants()->resolve_class_constants(THREAD);
+          HeapShared::set_can_preserve(ik, false);
+          HeapShared::add_preservable_class(ik);
+        }
+      }
+    }
+  }
 }
 
 // Archive all individual static fields that are annotated with @Preserve.

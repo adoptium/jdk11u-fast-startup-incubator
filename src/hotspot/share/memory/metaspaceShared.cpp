@@ -498,9 +498,9 @@ static void collect_array_classes(Klass* k) {
 }
 
 class CollectClassesClosure : public KlassClosure {
-  size_t instance_klass_count = 0;
-  size_t obj_array_count = 0;
-  size_t type_array_count = 0;
+  size_t _instance_klass_count;
+  size_t _obj_array_count;
+  size_t _type_array_count;
 
   void do_klass(Klass* k) {
     assert(!MetaspaceShared::is_in_parallel_phase(),
@@ -512,17 +512,17 @@ class CollectClassesClosure : public KlassClosure {
       } else {
         _global_klass_objects->append_if_missing(k);
         if (k->is_instance_klass()) {
-          instance_klass_count ++;
+          _instance_klass_count ++;
           if (k->can_preserve()) {
             HeapShared::add_preservable_class(InstanceKlass::cast(k));
           }
         } else {
           assert(k->is_array_klass(), "must be");
           if (k->is_objArray_klass()) {
-            obj_array_count ++;
+            _obj_array_count ++;
           } else {
             assert(k->is_typeArray_klass(), "sanity");
-            type_array_count ++;
+            _type_array_count ++;
           }
 
           // Add in the higher dimension array classes too
@@ -536,9 +536,10 @@ class CollectClassesClosure : public KlassClosure {
   }
 
  public:
-  size_t num_instance_klass() { return instance_klass_count; }
-  size_t num_obj_array()      { return obj_array_count; }
-  size_t num_type_array()     { return type_array_count; }
+  CollectClassesClosure() : _instance_klass_count(0), _obj_array_count(0), _type_array_count(0) {}
+  size_t num_instance_klass() { return _instance_klass_count; }
+  size_t num_obj_array()      { return _obj_array_count; }
+  size_t num_type_array()     { return _type_array_count; }
 };
 
 // Use 200,000 as the initial size for _global_klass_objects to
@@ -553,11 +554,11 @@ void MetaspaceShared::collect_archivable_classes() {
 
   tty->print_cr("Number of classes %d", _global_klass_objects->length());
   {
-    tty->print_cr("    instance classes   = %5d",
+    tty->print_cr("    instance classes   = %5zu",
                   collect_classes_closure.num_instance_klass());
-    tty->print_cr("    obj array classes  = %5d",
+    tty->print_cr("    obj array classes  = %5zu",
                   collect_classes_closure.num_obj_array());
-    tty->print_cr("    type array classes = %5d",
+    tty->print_cr("    type array classes = %5zu",
                   collect_classes_closure.num_type_array());
   }
 }
@@ -1809,6 +1810,7 @@ void MetaspaceShared::preload_and_dump(TRAPS) {
     tty->print_cr("Reading extra data: done.");
 
     HeapShared::initialize_subgraph_entry_fields(THREAD);
+    HeapShared::initialize_preservable_klass_from_list(THREAD);
 
     // Rewrite and link classes
     tty->print_cr("Rewriting and linking classes ...");

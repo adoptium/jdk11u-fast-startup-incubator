@@ -240,6 +240,7 @@ class fileStream : public outputStream {
 };
 
 CDS_ONLY(extern fileStream*   classlist_file;)
+CDS_ONLY(extern fileStream*   preinit_classlist_file;)
 
 // unlike fileStream, fdStream does unbuffered I/O by calling
 // open() and write() directly. It is async-safe, but output
