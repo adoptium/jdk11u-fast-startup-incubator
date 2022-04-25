@@ -1144,29 +1144,14 @@ void HeapShared::initialize_preservable_klass_from_list(Thread* THREAD) {
           }
 #endif
         }
-        log_warning(preinit)("Failed to preserve klass %s", klass_name->as_C_string());
+        log_warning(preinit)("Failed to load klass %s", klass_name->as_C_string());
         continue;
       }
       if (k->is_instance_klass()) {
         InstanceKlass* ik = InstanceKlass::cast(k);
-        ik->initialize(THREAD);
-        if (HAS_PENDING_EXCEPTION) {
-          CLEAR_PENDING_EXCEPTION;
-#ifndef PRODUCT
-          if (Verbose) {
-            Handle throwable(THREAD, PENDING_EXCEPTION);
-            java_lang_Throwable::print_stack_trace(throwable, tty);
-            tty->cr();
-          }
-#endif
-          log_warning(preinit)("Failed to preserve klass %s", klass_name->as_C_string());
-          continue;
-        } else {
-          assert(!ik->is_not_initialized(), "must be");
-          ik->constants()->resolve_class_constants(THREAD);
-          HeapShared::set_can_preserve(ik, false);
-          HeapShared::add_preservable_class(ik);
-        }
+        assert(ik->is_not_initialized(), "must be");
+        HeapShared::set_can_preserve(ik, false);
+        HeapShared::add_preservable_class(ik);
       }
     }
   }
