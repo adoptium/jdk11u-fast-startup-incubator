@@ -1135,7 +1135,6 @@ void HeapShared::initialize_preservable_klass_from_list(Thread* THREAD) {
                                    Handle()/*null_protection_domain*/, THREAD);
       if (k == NULL) {
         if (HAS_PENDING_EXCEPTION) {
-          CLEAR_PENDING_EXCEPTION;
 #ifndef PRODUCT
           if (Verbose) {
             Handle throwable(THREAD, PENDING_EXCEPTION);
@@ -1143,13 +1142,13 @@ void HeapShared::initialize_preservable_klass_from_list(Thread* THREAD) {
             tty->cr();
           }
 #endif
+          CLEAR_PENDING_EXCEPTION;
         }
         log_warning(preinit)("Failed to load klass %s", klass_name->as_C_string());
         continue;
       }
       if (k->is_instance_klass()) {
         InstanceKlass* ik = InstanceKlass::cast(k);
-        assert(ik->is_not_initialized(), "must be");
         HeapShared::set_can_preserve(ik, false);
         HeapShared::add_preservable_class(ik);
       }
@@ -1356,6 +1355,9 @@ public:
 void HeapShared::set_can_preserve(InstanceKlass *ik, bool is_annotated) {
   if (DumpSharedSpaces && PreInitializeArchivedClass &&
       _can_add_preserve_klasses) {
+    if (ik->can_preserve()) {
+      return;
+    }
     ik->set_can_preserve();
     ResourceMark rm;
     log_info(preinit)("Set can_preserve for class %s(" PTR_FORMAT "), %s",

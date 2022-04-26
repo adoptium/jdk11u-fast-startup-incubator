@@ -62,7 +62,7 @@ public class PreserveClassFromListTest {
         String appJar = TestCommon.getTestJar("preserveClassFromList.jar");
         Path filePath = Path.of("preservable.list");
         try {
-            Files.writeString(filePath, "PreserveClassFromListTest$PreserveStaticFieldApp");
+            Files.writeString(filePath, "PreserveClassFromListTest$PreserveStaticFieldApp\nInvalidClass");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -73,6 +73,7 @@ public class PreserveClassFromListTest {
                 "-Xlog:cds+heap=trace,preinit",
                 "-XX:PreInitializeArchivedClassList=" + filePath.toAbsolutePath().toString());
         TestCommon.checkDump(dumpOutput, "Loading classes to share");
+        TestCommon.checkDump(dumpOutput, "Failed to load klass InvalidClass");
         for (String f : dumpContent) {
             dumpOutput.shouldMatch(f);
         }
