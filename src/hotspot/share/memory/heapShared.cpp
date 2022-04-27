@@ -1134,16 +1134,6 @@ void HeapShared::initialize_preservable_klass_from_list(Thread* THREAD) {
                                    Handle(THREAD, SystemDictionary::java_system_loader()),
                                    Handle()/*null_protection_domain*/, THREAD);
       if (k == NULL) {
-        if (HAS_PENDING_EXCEPTION) {
-#ifndef PRODUCT
-          if (Verbose) {
-            Handle throwable(THREAD, PENDING_EXCEPTION);
-            java_lang_Throwable::print_stack_trace(throwable, tty);
-            tty->cr();
-          }
-#endif
-          CLEAR_PENDING_EXCEPTION;
-        }
         log_warning(preinit)("Failed to load klass %s", klass_name->as_C_string());
         continue;
       }
