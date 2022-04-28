@@ -2514,6 +2514,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Support pre-initializing and preserving selected classes and "   \
           "individual static fields during static CDS dump time.")          \
                                                                             \
+  product(ccstr, PreInitializeArchivedClassList, NULL,                      \
+          "Support pre-initializing and preserving classes from given "     \
+          "list during static CDS dump time.")                              \
+                                                                            \
   product(bool, PrintSharedArchiveAndExit, false,                           \
           "Print shared archive file contents")                             \
                                                                             \

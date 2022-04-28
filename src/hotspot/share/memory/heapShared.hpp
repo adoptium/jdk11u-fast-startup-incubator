@@ -419,6 +419,7 @@ class HeapShared: AllStatic {
                                                     size_t oopmap_in_bits) NOT_CDS_JAVA_HEAP_RETURN;
 
   static void initialize_subgraph_entry_fields(Thread* THREAD) NOT_CDS_JAVA_HEAP_RETURN;
+  static void initialize_preservable_klass_from_list(Thread* THREAD) NOT_CDS_JAVA_HEAP_RETURN;
   static void write_subgraph_info_table() NOT_CDS_JAVA_HEAP_RETURN;
   static void serialize_subgraph_info_table_header(SerializeClosure* soc) NOT_CDS_JAVA_HEAP_RETURN;
 };

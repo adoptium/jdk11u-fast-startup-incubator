@@ -72,12 +72,14 @@ bool SymbolTable::_needs_rehashing = false;
 bool SymbolTable::_lookup_shared_first = false;
 static juint murmur_seed = 0;
 
+#ifdef ASSERT
 // Pick hashing algorithm.
 static uintx hash_symbol(const char* s, int len, bool useAlt) {
   return useAlt ?
   AltHashing::halfsiphash_32(murmur_seed, (const uint8_t*)s, len) :
   java_lang_String::hash_code((const jbyte*)s, len);
 }
+#endif
 
 static uintx hash_shared_symbol(const char* s, int len) {
   return java_lang_String::hash_code((const jbyte*)s, len);
